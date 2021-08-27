@@ -1,0 +1,29 @@
+---
+# configuration for the AMP bootstrap
+amp_bootstrap:
+    # the root directory for all things AMP
+    installation_root: /home/bdwheele/projects/amp_repackage/install        
+    # packages that we know about
+    packages: 
+        - galaxy
+        - amp_mgms
+        - amp_rest
+        - amp_ui
+
+
+
+galaxy:
+    uwsgi:
+        http: :8300
+    galaxy:
+        admin_users: bdwheele@iu.edu
+        # NOTE: tool_path and tool_config_file are set by the
+        # amp_mgms package configuration
+
+
+amp_mgms:
+    
+
+amp_ui:
+
+amp_rest:
