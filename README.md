@@ -15,6 +15,7 @@ To run AMP the following system requirements must be met:
 * Python >= 3.6 
 * Java Runtime 11
 * nginx or apache
+* Singularity runtime 3.8
 
 If you wish to collect uwsgi metrics, you will need:
 * Make

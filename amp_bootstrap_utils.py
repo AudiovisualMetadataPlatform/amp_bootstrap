@@ -76,7 +76,7 @@ def write_galaxy_config(data, file):
     with open(file, "w") as f:
         f.write(yaml.safe_dump({'galaxy': data['galaxy']}))
         f.write("\nuwsgi:\n")
-        for k, v in data.items():
+        for k, v in data['uwsgi'].items():
             if isinstance(v, list):
                 for n in v:
                     f.write(f"  {k}: {n}\n")

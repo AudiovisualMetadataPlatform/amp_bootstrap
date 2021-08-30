@@ -14,7 +14,8 @@ amp_bootstrap:
 
 galaxy:
     uwsgi:
-        http: :8300
+        http: :8100
+        enable-metrics: false
     galaxy:
         admin_users: bdwheele@iu.edu
         # NOTE: tool_path and tool_config_file are set by the
