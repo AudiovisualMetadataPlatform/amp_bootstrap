@@ -142,7 +142,7 @@ def action_install(config, args):
         here = Path.cwd().resolve()
         args.config = str(Path(args.config).resolve())
         # step 1: copy the files                
-        run_cmd(pkgroot / "data", ['cp', '-a' if not args.debug else '-av', '.', str(install_path)], "Copying packaged failed")
+        run_cmd(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], "Copying packaged failed", workdir=pkgroot / "data")
         
         # step 2: run the installation script (if it exists)
         if (install_path / "amp_install.py").exists():
@@ -150,7 +150,7 @@ def action_install(config, args):
             cmd = [install_path / 'amp_install.py', args.config]
             if args.debug:
                 cmd.append('--debug')
-            run_cmd(install_path, cmd, "Install script failed")
+            run_cmd(cmd, "Install script failed", workdir=install_path)
         logging.info("Installation complete")
 
 if __name__ == "__main__":
