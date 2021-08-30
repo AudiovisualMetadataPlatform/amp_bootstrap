@@ -106,7 +106,7 @@ def action_install(config, args):
     package = Path(args.package)
     with tempfile.TemporaryDirectory(prefix="amp_bootstrap_") as tmpdir:
         logging.debug(f"Unpacking package {package!s} into {tmpdir}")
-        shutil.unpack_archive(package, tmpdir)
+        shutil.unpack_archive(str(package), str(tmpdir))
         pkg_stem = package.stem.replace('.tar', '')
         if not Path(tmpdir, pkg_stem).exists():
             logging.error("Package doesn't contain a directory that matches the package stem")
