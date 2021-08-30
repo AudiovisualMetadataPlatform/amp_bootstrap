@@ -59,8 +59,8 @@ def read_galaxy_config(file):
                     in_section= False
                 else:
                     key, value = line.split(':', 1)
-                    if key in data:
-                        if isinstance(data[key], list):
+                    if key in data['uwsgi']:
+                        if isinstance(data['uwsgi'][key], list):
                             data['uwsgi'][key].append(value)
                         else:
                             data['uwsgi'][key] = [data['uwsgi'][key], value]
