@@ -50,7 +50,7 @@ def read_galaxy_config(file):
             line = line.strip()
             if line.startswith('#') or line == '':
                 continue
-            #logging.debug(f"in_section: {in_section}, line: {line}")
+            logging.debug(f"in_section: {in_section}, line: {line}")
             if not in_section:
                 if line == "uwsgi:":
                     in_section = True
@@ -65,7 +65,7 @@ def read_galaxy_config(file):
                         else:
                             data['uwsgi'][key] = [data[key], value]
                     else:
-                        data[key] = value
+                        data['uwsgi'][key] = value
     return data
 
 def write_galaxy_config(data, file):
