@@ -186,15 +186,11 @@ def config_galaxy(config, args):
         f.write("## Automatically generated file, do no edit\n")
         f.write("uwsgi:\n")
         # the host/port for galaxy
-        port = config['galaxy']['port']
-        if 'host' in config['galaxy']:
-            if config['galaxy']['host'] is None:
-                f.write(f'  http: :{port}\n')
-            else:
-                f.write(f'  http: {config["galaxy"]["host"]}:{port}\n')
-        else:
-            f.write(f"  http:  {config['amp']['url_host']}:{port}\n")
-
+        port = config['amp']['port'] + 2
+        config['amp']['galaxy_port'] = port  # we'll need this value later.
+        host = config['galaxy'].get('host', '')
+        f.write(f"  http: {host}:{port}\n")
+        
         # the application mount settings        
         f.write(f"  mount: {config['galaxy']['root']}=galaxy.webapps.galaxy.buildapp:uwsgi_app()\n")
         f.write(f"  manage-script-name: true\n")
@@ -228,74 +224,56 @@ def config_galaxy(config, args):
         f.write(yaml.safe_dump({'galaxy': galaxy}))
         f.write("\n")
 
-    # Now that there's a configuration, let's create the DB (if needed)
-    # and create the user.
+    # set up the galaxy python
+    logging.info("Installing galaxy python and node")
+    os.environ['GALAXY_ROOT'] = str(amp_root / "galaxy")
+    here = os.getcwd()
+    os.chdir(amp_root / "galaxy")
+    try:
+        p = subprocess.run(['scripts/common_startup.sh'], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
+    except Exception as e:
+        logging.error(f"Could not set up galaxy python: {e}")
+        logging.error(p.stdout)
+        exit(1)
+    galaxy_python = str(amp_root / "galaxy/.venv/bin/python")
+
+    # Now that there's a configuration (and python), let's create the DB (if needed)
+    # and create the user.  
+    logging.info("Creating galaxy database")
     subprocess.run([str(amp_root / "galaxy/create_db.sh")], check=True)
     # now that there's a database, we need to have an admin user created, with the
     # password specified.  Luckily, there's a script at 
     # https://gist.github.com/jmchilton/1979583 that was referenced in scripts/db_shell.py
-    # that shows how to set up an administration user.
-    with open(amp_root / "galaxy/admin-bootstrap.py", "w") as f:
-        os.chmod(f.name, 0o600) # make sure nobody can read this file but us.
-        f.write(f"""from scripts.db_shell import *
-# check the user, and add it if it doesn't exist
-admin_user = sa_session.query(User).filter(User.email=="{config['galaxy']['username']}").first()
-if admin_user is None:
-    print("Creating user")
-    admin_user = User("{config['galaxy']['username']}")
-    admin_user.username = 'ampuser'
-    admin_user.active = True
-    sa_session.add(admin_user)
-    sa_session.flush()
+    # that shows how to set up an administration user.  galaxy_configure.py is based 
+    # heavily on those things.
+    
+    
+    try:
+        p = subprocess.run([galaxy_python, sys.path[0] + "/galaxy_configure.py", 
+                            config['galaxy']['admin_username'], config['galaxy']['admin_password'], config['galaxy']['id_secret']],
+                        check=True, stdout=subprocess.PIPE, encoding='utf-8')
+        if not p.stdout.startswith('user_id='):
+            raise ValueError("Galaxy configuration didn't return a user_id")
+        (_, config['galaxy']['user_id']) = p.stdout.splitlines()[0].split('=', 1)
 
-# update the password to match the config
-print("Resetting password")
-admin_user.set_password_cleartext("{config['galaxy']['password']})
-
-# set up the API key
-admin_key = sa_session.query(APIKeys).filter(APIKeys.user_id==admin_user.id).first()
-if admin_key is None:
-    print("Creating a new API key")
-    admin_key = APIKeys()
-    admin_key.user_id = admin_user.id
-    admin_key.key = "{config['galaxy']['user_id']}
-    sa_session.add(admin_key)
-else:
-    if admin_key.key != "{config['galaxy']['user_id']})":
-        print("Clearing old API Key")
-        sa_session.delete(admin_key)
-        sa_session.flush()
-        admin_key = APIKeys()
-        admin_key.user_id = admin_user.id
-        admin_key.key = "{config['galaxy']['user_id']}
-        sa_session.add(admin_key)
-    else:
-        print("Retaining API Key")
-sa_session.flush()
-""")
-        
-
-
-
-
-
-
-
-
+        print(config['galaxy']['user_id'])
+    except Exception as e:
+        logging.error(f"Galaxy database config failed: {e}")
+        exit(1)
 
 
     # TODO:  galaxy tool config needs to come from somewhere
-    # TODO:  the file which is used by the tools themselves.
+    # TODO:  the config file which is used by the tools themselves.
 
 
 
 
 def config_tomcat(config, args):
-    tomcat_port = config['tomcat']['port']
+    tomcat_port = config['amp']['port']
     tomcat_shutdown_port = str(int(tomcat_port) + 1)
 
-    if config['amp'].get('url_https', False):        
-        proxy_data = f'proxyName="{config["amp"]["url_host"]}" proxyPort="443" secure="true" scheme="https"'
+    if config['amp'].get('https', False):        
+        proxy_data = f'proxyName="{config["amp"]["host"]}" proxyPort="443" secure="true" scheme="https"'
     else:
         proxy_data = ""
 
@@ -350,9 +328,9 @@ def config_ui(config, args):
             'VUE_APP_USER_GUIDE': config['ui']['user_guide_url']}
 
     if config['amp'].get('use_https', False):
-        vars['VUE_APP_AMP_URL'] = f"https://{config['amp']['url_host']}/rest"
+        vars['VUE_APP_AMP_URL'] = f"https://{config['amp']['host']}/rest"
     else:
-        vars['VUE_APP_AMP_URL'] = f"http://{config['amp']['url_host']}:{config['tomcat']['port']}/rest"
+        vars['VUE_APP_AMP_URL'] = f"http://{config['amp']['host']}:{config['amp']['port']}/rest"
 
     # config.js holds the values we need
     with open(amp_root / "tomcat/webapps/ROOT/config.js", "w") as f:
@@ -378,65 +356,55 @@ def config_rest(config, args):
             with open(amp_root / "tomcat/bin/setenv.sh", "w") as o:
                 for l in i.readlines():
                     if 'spring.config.location' in l:
-                        o.write(f'JAVA_OPTS="$JAVA_OPTS -Dspring.config.location={amp_root / "data/config/application.properties"!s}"')
+                        pass
                     else:
                         o.write(l)
                     o.write('\n')
-        
+                o.write(f'JAVA_OPTS="$JAVA_OPTS -Dspring.config.location={amp_root / "data/config/application.properties"!s}"')
+
     # create the configuration file, based on config data...
     with open(amp_root / "data/config/application.properties", "w") as f:
         # simple property map
         property_map = {
-            # server port
-            'server.port': ('tomcat', 'port'),
+            # server port and root            
+            'server.port': ('amp', 'port'),
+            'server.servlet.context-path': ('rest', 'context_path', '/rest'),
+
+            # database creds
+            'spring.datasource.username': ('rest', 'db_user'),
+            'spring.datasource.password': ('rest', 'db_pass'),
+
+
+
+
+
+
             # paths
             'logging.path': ('rest', 'logging_path', 'logs', 'path_rel', 'amp', 'data_root'),
             'amppd.fileStorageroot': ('rest', 'storage_path', 'media', 'path_rel', 'amp', 'data_root'),
             'amppd.dropboxRoot': ('rest', 'dropbox_path', 'dropbox', 'path_rel', 'amp', 'data_root'),
             'amppd.mediaprobeDir': ('rest', 'mediaprobe_path', 'MediaProbe', 'path_rel', 'amp', 'data_root'),
 
-            # spring database
-            'spring.datasource.username': ('rest', 'db_user'),
-            'spring.datasource.password': ('rest', 'db_pass'),
-            'spring.jpa.hibernate.ddl-auto': ('rest', 'ddl_mode', 'update'),
-            'spring.jpa.properties.javax.persistence.validation.mode': ('rest', 'validation_mode', 'none'),
             
             # initial user
             'amppd.username': ('rest', 'admin_username'),
             'amppd.password': ('rest', 'admin_password'), 
-            'amppd.adminEmail': ('rest', 'admin_email'), 
+            'amppd.admin': ('rest', 'admin_email'), 
 
-            # email server
-            "spring.mail.host": ('rest', 'email_host', 'localhost'),
-            "spring.mail.port": ('rest', 'email_port', "25"),
-            "spring.mail.protocol": "smtp",
-            "spring.mail.properties.mail.smtp.auth": "false",
-            "spring.mail.properties.mail.smtp.starttls.enable": "false",
-            
-            # request sizing.
-            "spring.servlet.multipart.max-file-size": ('rest', 'max_request', '5GB'),
-            "spring.servlet.multipart.max-request-size": ('rest', 'max_request', '5GB'),
-      
-
-            # AMP UI integration
-            
-
+              
             # galaxy integration
             "galaxy.host": ('galaxy', 'host', 'localhost'),
-            "galaxy.port": ('galaxy', 'port', '8100'),
+            "galaxy.port": ('amp', 'galaxy_port'),
             "galaxy.root": ('galaxy', 'proxy_path', '/rest/galaxy'),
             "galaxy.userId": ('galaxy', "user_id"),
             "galaxy.username": ('galaxy', 'admin_username'),
             "galaxy.password": ('galaxy', 'admin_password'),
             
-            
             # misc configuration
             "amppd.workflowEditMinutes": ('rest', 'workflow_edit_minutes', '60'),
             'ammpd.resetPasswordMinutes': ('rest', 'reset_password_minutes', '10'),
             'amppd.activateAccountDays': ('rest', 'activate_account_days', '7'),
-            'amppd.refreshResultsTableMinutes': ('rest', 'refresh_results_table_minutes', '300'),
-            'amppd.refreshResultsTableCron': ('rest', 'refresh_results_table_cron', '0 0/5 6-22 ? * *'),            
-            'amppd.refreshResultsStatusCron': ('rest', 'refresh_results_status_cron', '0 0 1 ? * MON-FRI'),
+
             'logging.level.edu.indiana.dlib.amppd': ('rest', 'logging_level', "INFO"),
             'amppd.environment': ('rest', 'environment', 'prod'),
             'amppd.pythonPath': ('rest', 'python', 'python3'),
@@ -445,13 +413,13 @@ def config_rest(config, args):
             # external integration
             "avalon.url": ('rest', 'avalon_url', ''),
             "avalon.token": ('rest', 'avalon_url', ''),
-            "amppd.externalSources": ('rest', 'external_sources', 'MCO,DarkAvalon,NYPL,WGBH,MusicLibrary,IUArchives,Test'),
-            "amppd.taskManagers": ('rest','task_managers', 'Jira,Trello'),
+
 
             # secrets
             'amppdui.hmgmSecretKey': ('rest', 'amppdui_hmgm_secret'), 
             'amppd.encryptionSecret': ('rest', 'encryption_secret'), 
-            'amppd.jwtSecret': ('rest', 'jwt_secret'), 
+            #'amppd.jwtSecret': ('rest', 'jwt_secret'), 
+            'jwd.secret': ('rest', 'jwt_secret'),
             'amppd.jwtExpireMinutes': ('rest', 'jwd_expiration_minutes', '240'),
         }
         
@@ -515,11 +483,11 @@ def config_rest(config, args):
         f.write(f"spring.datasource.url = jdbc:postgresql://{config['rest']['db_host']}:{config['rest'].get('db_port', 5432)}/{config['rest']['db_name']}\n")
         # amppdui.url and amppd.url -- where we can find the UI and ourselves.
         if config['amp'].get('use_https', False):
-            f.write(f"amppdui.url = https://{config['amp']['url_host']}/#\n")
-            f.write(f"amppd.url = https://{config['amp']['url_host']}/rest\n")
+            f.write(f"amppdui.url = https://{config['amp']['host']}/#\n")
+            f.write(f"amppd.url = https://{config['amp']['host']}/rest\n")
         else:
-            f.write(f"amppdui.url = http://{config['amp']['url_host']}:{config['tomcat']['port']}/#\n")
-            f.write(f"amppd.url = http://{config['amp']['url_host']}:{config['tomcat']['port']}/rest\n")
+            f.write(f"amppdui.url = http://{config['amp']['host']}:{config['amp']['port']}/#\n")
+            f.write(f"amppd.url = http://{config['amp']['host']}:{config['amp']['port']}/rest\n")
         #  amppdui.documentRoot -- this should be somewhere in the tomcat tree.
         f.write(f"amppdui.documentRoot = {amp_root}/tomcat/webapps/ROOT\n")
         f.write(f"amppdui.symlinkDir = {amp_root}/{config['amp']['data_root']}/symlinks\n")
@@ -533,12 +501,10 @@ def config_rest(config, args):
 def action_start(config, args):
     if args.service in ('all', 'galaxy'):
         logging.info("Starting Galaxy")
+        subprocess.run([str(amp_root / "galaxy/run.sh"), "start"])
 
     if args.service in ('all', 'tomcat'):
         logging.info("Starting Tomcat")
-        
-
-
         subprocess.run([str(amp_root / "tomcat/bin/startup.sh")], check=True)
 
 def action_stop(config, args):
@@ -547,6 +513,7 @@ def action_stop(config, args):
         subprocess.run([str(amp_root / "tomcat/bin/shutdown.sh")], check=True)
     if args.service in ('all', 'galaxy'):
         logging.info("Stopping Galaxy")
+        subprocess.run([str(amp_root / "galaxy/run.sh"), "stop"])
 
 def action_restart(config, args):
     action_stop(config, args)
