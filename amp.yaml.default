@@ -3,39 +3,47 @@ amp_bootstrap:
     # configuration for the AMP bootstrap    
     
 
-
-
- 
-
-
 amp:
     # This is overall configuration -- things that apply to all components
-    # this is the hostname of the machine serving AMP.  For a workstation
-    # deployment, localhost can be used.
-    url_host: localhost
-    url_https: false
-    # relative to the installation directory.
+    
+    # URL configuration    
+    # Hostname used in public URLs.  For a workstation install this can be 
+    # localhost.  If AMP is being proxied (see 'https') then the host should
+    # be the URL of the proxy (i.e.  amp.example.edu)
+    host: localhost
+    # The base port -- different services run relative to this port
+    # port + 0 = Tomcat HTTP server (The User Interface and REST API)
+    # port + 1 = Tomcat Shutdown port
+    # port + 2 = Galaxy
+    port: 8080
+
+    # If https is set then url for AMP will be:
+    #   https://{host}/
+    # if it is not then
+    #   http://{host}:{port}/
+    https: false
+
+
+    # All of the data is relative to the installation directory.
     data_root: data
 
 galaxy:    
-    # host:  if it doesn't exist, the amp/url_host will be used.  If is null 
-    # then it will listen on all interfaces, otherwise the value will be used.    
-    host: null
-    port: 8100
+    # what interface galaxy should bind to.  This should be fairly 
+    # restricted.  If the parameter is missing then it will bind to all interfaces.
+    host: localhost
 
     # galaxy root URL
     root: /rest/galaxy
 
     # Authentication bits
-    user_id: xxxxx  # random garbage characters...
-    username: xxx@somewhere.edu  # this should be an email address
-    password: xxxxxxxxxx
+    admin_username: myuser@example.edu
+    admin_password: my admin password
 
     # this should be a random string of 5-56 characters that is used to generate encoded
-    # content between the galaxy instance and the client.  If the secret is
-    # changed after the system is set up, all of the previous data will be inaccessable.
+    # ids between the galaxy instance and the client.  Because AMP stores various IDs as
+    # part of its operation, changing this value after the initial setup will make all of
+    # the data inaccessable.
     id_secret: CHANGE ME
-
 
     # generic uwsgi settings -- these are copied as-is into the UWSGI
     # section of the configuration file.  Generally there's no need to mess
@@ -51,7 +59,7 @@ galaxy:
         die-on-term: true
         hook-master-start: 
           - unix_signal:2 gracefully_kill_them_all
-          - unix_signal_15 gracefully_kill_them_all
+          - unix_signal:15 gracefully_kill_them_all
         master: false
         pythonpath: lib
         virtualenv: .venv
@@ -142,70 +150,106 @@ galaxy:
                     propagate: false
 
 
-
-tomcat:
-    # The main tomcat port.  The shutdown port will be this port + 1
-    port: 8080
-
 ui:
     # UI configuration.
-    user_guide_url: https://your.host/AMP/
+    user_guide_url: https://example.edu/AMP/
     unit: AMP Pilot Unit
 
 rest:
-    # Configuration for the AMP rest backend
-    
+    # PostgreSQL database configuration
+    db_host: localhost
+    db_name: ampdb
+    db_user: ampuser
+    db_pass: amppass
+
+    # AMP administrator user, set up on intial start.
+    # NOTE: password should be changed interactively after initial start
+    # NOTE: After initial setup, these values are ignored(?). 
+    admin_username: ampadmin
+    admin_password: amppass
+    admin_email: ampadmin@example.edu
+
+    # Avalon integration
+    avalon_url: https://avalon.example.edu
+    avalon_token: some-really-long-hex-string
+
+
     # paths, relative to the amp:data_root directory, if the value is a relative path
     logging_path: logs
     storage_path: media
     dropbox_path: dropbox
-    mediaprobe_path: MediaProbe
-
-    # database configuration
-    db_host: localhost
-    db_name: xxxxxxx
-    db_user: xxxxxxx
-    db_pass: xxxxxxx
-
-    # administrator user, set up on intial start.
-    # NOTE: password should be changed interactively after initial start
-    # NOTE: After initial setup, these values are ignored. 
-    admin_username: xxxxxx
-    admin_password: xxxxxx
-    admin_email: some_user@example.com
-
-
-    # email server config
-    email_host: localhost
-
-    # max xfer
-    max_request: 5GB
-
-    # external integration
-    avalon_url: https://avalon.example.com
-    avalon_token: some-really-long-token-bit
-    external_sources: MCO,DarkAvalon,NYPL,WGBH,MusicLibary,IUArchives,Test
-    task_managers: Jira,Trello
-
-    # misc configuration
-    workflow_edit_minutes: 60
-    reset_password_minutes: 10
-    activate_account_days: 7
-    refresh_results_table_minutes: 300
-    refresh_results_status_cron: 0 0/5 6-22 ? * *
-    refresh_results_table_cron: 0 0 1 ? * MON-FRI
-    logging_level: DEBUG
-    environment: tst
-    python: python3
-    use_auth: true
 
     # secrets
-    amppdui_hmgm_secret: hmgm-secret
-    encryption_secret: encryption-secret
-    jwt_secret: jwt-secret
-    jwt_expiration_minutes: 240
+    amppdui_hmgm_secret: hmgm-secret-text
+    encryption_secret: encryption-secret-text
+    jwt_secret: jwt-secret-text
 
-    # not handled
-    #amppd.corsOriginPattern = http://localhost:*
+    # These properties are to populate the "boilerplate" bits of
+    # application properties.  You shouldn't need to change any of these...
+    properties:
+        # tomcat configuration
+        server.servlet.context-path: /rest
 
+        # Spring datasource
+        spring.datasource.driver-class-name: org.postgresql.Driver
+        spring.datasource.platform: postgres 
 
+        # Spring JPA Stuff
+        spring.jpa.database: POSTGRESQL
+        spring.jpa.generate-ddl: true
+        # ddl-auto should be set to 'create' initially(?) and then 'update' later
+        spring.jpa.hibernate.ddl-auto: update
+        spring.jpa.show-sql: true 
+        spring.jpa.properties.hibernate.format_sql: true
+        spring.jpa.properties.hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+        spring.jpa.properties.hibernate.temp.use_jdbc_metadata_defaults: false
+        spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation: true 
+        spring.jpa.properties.javax.persistence.validation.mode: none
+
+        # Mail
+        spring.mail.host: localhost
+        spring.mail.port: 25
+        spring.mail.protocol: smtp
+        spring.mail.properties.mail.smtp.auth: false
+        spring.mail.properties.mail.smtp.starttls.enable: false
+        spring.mail.properties.mail.smtp.connectiontimeout: 5000
+        spring.mail.properties.mail.smtp.timeout: 3000
+        spring.mail.properties.mail.smtp.writetimeout: 5000
+
+        # Multipart Request limits
+        spring.servlet.multipart.max-file-size: 5GB
+        spring.servlet.multipart.max-request-size: 5GB
+        spring.servlet.multipart.enabled: true
+        
+        # Session
+        server.servlet.session.timeout: 1800s
+        spring.session.timeout: 1800s        
+        spring.session.store-type: jdbc
+        spring.session.jdbc.initialize-schema: always
+        # do I need to fill in the @@platform@@ value?
+        spring.session.jdbc.schema: classpath:org/springframework/session/jdbc/schema-@@platform@@.sql
+        spring.session.jdbc.table-name: SPRING_SESSION
+
+        # Logging
+        logging.level.edu.indiana.dlib.amppd: TRACE
+        
+        # External sources and task managers
+        amppd.externalSources: MCO,DarkAvalon,NYPL
+        amppd.taskManagers: Jira,Trello
+
+        # refresh intervals
+        amppd.refreshResultsTableMinutes: 300
+        amppd.refreshResultsStatusCron: 0 0/10 6-18 ? * MON-FRI
+        amppd.refreshResultsTableCron: 0 0 1 ? * MON-FRI
+        amppd.refreshWorkflowResultsStatusCron: 0 0/10 6-18 ? * MON-FRI
+        amppd.refreshWorkflowResultsAllCron: 0 0 1 ? * MON-FRI
+
+        # misc
+        management.endpoints.web.exposure.include: '*'
+        amppd.auth: true
+        amppd.passwordResetTokenExpiration: 600
+        amppd.accountActivationTokenExpiration: 604800
+        amppd.environment: prod
+        amppd.pythonPath: python3
+        amppd.mediaprobeDir: ../MediaProbe/
+        amppd.corsOriginPattern: http://localhost:8080

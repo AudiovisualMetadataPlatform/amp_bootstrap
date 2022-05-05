@@ -368,59 +368,40 @@ def config_rest(config, args):
         property_map = {
             # server port and root            
             'server.port': ('amp', 'port'),
-            'server.servlet.context-path': ('rest', 'context_path', '/rest'),
-
-            # database creds
+            
+            # database creds (host/db/port is handled elsewhere)
             'spring.datasource.username': ('rest', 'db_user'),
             'spring.datasource.password': ('rest', 'db_pass'),
 
-
-
-
-
-
-            # paths
-            'logging.path': ('rest', 'logging_path', 'logs', 'path_rel', 'amp', 'data_root'),
-            'amppd.fileStorageroot': ('rest', 'storage_path', 'media', 'path_rel', 'amp', 'data_root'),
-            'amppd.dropboxRoot': ('rest', 'dropbox_path', 'dropbox', 'path_rel', 'amp', 'data_root'),
-            'amppd.mediaprobeDir': ('rest', 'mediaprobe_path', 'MediaProbe', 'path_rel', 'amp', 'data_root'),
-
-            
             # initial user
             'amppd.username': ('rest', 'admin_username'),
             'amppd.password': ('rest', 'admin_password'), 
-            'amppd.admin': ('rest', 'admin_email'), 
+            'amppd.adminEmail': ('rest', 'admin_email'), 
 
-              
             # galaxy integration
-            "galaxy.host": ('galaxy', 'host', 'localhost'),
-            "galaxy.port": ('amp', 'galaxy_port'),
-            "galaxy.root": ('galaxy', 'proxy_path', '/rest/galaxy'),
-            "galaxy.userId": ('galaxy', "user_id"),
+            "galaxy.host": ('galaxy', 'host', 'localhost'),            
+            "galaxy.root": ('galaxy', 'root'),            
             "galaxy.username": ('galaxy', 'admin_username'),
             "galaxy.password": ('galaxy', 'admin_password'),
-            
-            # misc configuration
-            "amppd.workflowEditMinutes": ('rest', 'workflow_edit_minutes', '60'),
-            'ammpd.resetPasswordMinutes': ('rest', 'reset_password_minutes', '10'),
-            'amppd.activateAccountDays': ('rest', 'activate_account_days', '7'),
+            "galaxy.port": ('amp', 'galaxy_port'),  # set during galaxy config generation
+            "galaxy.userId": ('galaxy', "user_id"), # set during galaxy config generation
 
-            'logging.level.edu.indiana.dlib.amppd': ('rest', 'logging_level', "INFO"),
-            'amppd.environment': ('rest', 'environment', 'prod'),
-            'amppd.pythonPath': ('rest', 'python', 'python3'),
-            'amppd.auth': ('rest', 'use_auth', 'true', 'boolean'),
+            # AMPUI properties
+            'amppdui.hmgmSecretKey': ('rest', 'amppdui_hmgm_secret'),
 
-            # external integration
-            "avalon.url": ('rest', 'avalon_url', ''),
-            "avalon.token": ('rest', 'avalon_url', ''),
+            # Directories
+            'amppd.fileStorageRoot': ('rest', 'storage_path', 'media', 'path_rel', 'amp', 'data_root'),
+            'amppd.dropboxRoot': ('rest', 'dropbox_path', 'dropbox', 'path_rel', 'amp', 'data_root'),
+            'logging.path': ('rest', 'logging_path', 'logs', 'path_rel', 'amp', 'data_root'),
 
+            # Avalon integration
+            "avalon.url": ('rest', 'avalon_url', 'https://avalon.example.edu'),
+            "avalon.token": ('rest', 'avalon_token', 'dummytoken'),
 
-            # secrets
-            'amppdui.hmgmSecretKey': ('rest', 'amppdui_hmgm_secret'), 
+            # secrets             
             'amppd.encryptionSecret': ('rest', 'encryption_secret'), 
-            #'amppd.jwtSecret': ('rest', 'jwt_secret'), 
-            'jwd.secret': ('rest', 'jwt_secret'),
-            'amppd.jwtExpireMinutes': ('rest', 'jwd_expiration_minutes', '240'),
+            'amppd.jwtSecret': ('rest', 'jwt_secret'),
+
         }
         
         # create the configuration
@@ -492,7 +473,12 @@ def config_rest(config, args):
         f.write(f"amppdui.documentRoot = {amp_root}/tomcat/webapps/ROOT\n")
         f.write(f"amppdui.symlinkDir = {amp_root}/{config['amp']['data_root']}/symlinks\n")
 
-        
+        f.write("# boilerplate properties\n")
+        for k,v in config['rest']['properties'].items():
+            if isinstance(v, bool):
+                f.write(f"{k} = {'true' if v else 'false'}\n")
+            else:
+                f.write(f"{k} = {v}\n")
         
 
 
