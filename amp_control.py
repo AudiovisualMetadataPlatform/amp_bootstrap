@@ -14,6 +14,7 @@ import os
 import urllib.request
 import tarfile
 from datetime import datetime
+import zipfile
 
 
 amp_root = Path(sys.path[0]).parent
@@ -21,8 +22,8 @@ config = None
 
 # We need to use one of the 9.x since 10.x changed the package names for the EE
 # stuff and it breaks code
-tomcat_download_url_base = "https://dlcdn.apache.org/tomcat/tomcat-9/"
-tomcat_download_version = "9.0.60"
+tomcat_download_url_base = "https://archive.apache.org/dist/tomcat/tomcat-9/"
+tomcat_download_version = "9.0.62"
 
 # TODO/Wishlist:
 #  * should there be a 'download' option to download the latest packages from our site?
@@ -45,7 +46,7 @@ def main():
     p = subp.add_parser('configure', help="Configure AMP")
     p = subp.add_parser('install', help="Install a service")
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
-    p.add_argument("package", help="Package file to install")    
+    p.add_argument("package", nargs="+", help="Package file(s) to install")    
     args = parser.parse_args()
     
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
@@ -102,68 +103,88 @@ def action_init(config, args):
             logging.info(f"Creating {d!s}")
             d.mkdir(parents=True)
 
+    # mediaprobe needs to be checked out.
+    # TODO
+
+
 
 def action_install(config, args):
     # extract the package and validate that it's OK
-    package = Path(args.package)
-    with tempfile.TemporaryDirectory(prefix="amp_bootstrap_") as tmpdir:
-        logging.debug(f"Unpacking package {package!s} into {tmpdir}")
-        shutil.unpack_archive(str(package), str(tmpdir))
-        pkg_stem = package.stem.replace('.tar', '')
-        if not Path(tmpdir, pkg_stem).exists():
-            logging.error("Package doesn't contain a directory that matches the package stem")
-            exit(1)
-        pkgroot = Path(tmpdir, pkg_stem)
-        try:
-            with open(pkgroot / "amp_package.yaml") as f:
-                pkgmeta = yaml.safe_load(f)
-        except Exception as e:
-            logging.error(f"Cannot load package metadata: {e}")
-        required_keys = set(['name', 'version', 'build_date', 'install_path'])
-        if not required_keys.issubset(set(pkgmeta.keys())):
-            logging.error(f"Malformed package: One or more required keys missing from package metadata")
-            logging.error(f"Needs: {required_keys}, has {set(pkgmeta.keys())}")
-            exit(1)
-                
-        install_path = amp_root / pkgmeta['install_path']
+    
+    
+    for package in [Path(x) for x in args.package]:
+        with tempfile.TemporaryDirectory(prefix="amp_bootstrap_") as tmpdir:
+            logging.debug(f"Unpacking package {package!s} into {tmpdir}")
+            shutil.unpack_archive(str(package), str(tmpdir))
+            pkg_stem = package.stem.replace('.tar', '')
+            if not Path(tmpdir, pkg_stem).exists():
+                logging.error("Package doesn't contain a directory that matches the package stem")
+                exit(1)
+            pkgroot = Path(tmpdir, pkg_stem)
+            try:
+                with open(pkgroot / "amp_package.yaml") as f:
+                    pkgmeta = yaml.safe_load(f)
+            except Exception as e:
+                logging.error(f"Cannot load package metadata: {e}")
+            required_keys = set(['name', 'version', 'build_date', 'install_path'])
+            if not required_keys.issubset(set(pkgmeta.keys())):
+                logging.error(f"Malformed package: One or more required keys missing from package metadata")
+                logging.error(f"Needs: {required_keys}, has {set(pkgmeta.keys())}")
+                exit(1)
+                    
+            install_path = amp_root / pkgmeta['install_path']
 
-        print(f"Package Data:")
-        print(f"  Name: {pkgmeta['name']}")
-        print(f"  Version: {pkgmeta['version']}")
-        print(f"  Build date: {pkgmeta['build_date']}")
-        print(f"  Installation path: {install_path!s}")
+            print(f"Package Data:")
+            print(f"  Name: {pkgmeta['name']}")
+            print(f"  Version: {pkgmeta['version']}")
+            print(f"  Build date: {pkgmeta['build_date']}")
+            print(f"  Installation path: {install_path!s}")
 
-        if not args.yes:
-            if input("Continue? ").lower() not in ('y', 'yes'):
-                logging.info("Installation terminated.")
-                exit(0)
+            if not args.yes:
+                if input("Continue? ").lower() not in ('y', 'yes'):
+                    logging.info("Installation terminated.")
+                    exit(0)
 
-        if not install_path.exists():
-            install_path.mkdir(parents=True)
+            if not install_path.exists():
+                install_path.mkdir(parents=True)
 
-        # copy the files from the data directory to the install_path
-        here = Path.cwd().resolve()
-        os.chdir(pkgroot / "data")
-        try:
-            subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
-        except Exception as e:
-            print(f"Copying package failed: {e}")
-            exit(1)
-        os.chdir(here)
+            # copy the files from the data directory to the install_path
+            here = Path.cwd().resolve()
+            os.chdir(pkgroot / "data")
+            try:
+                subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
+            except Exception as e:
+                print(f"Copying package failed: {e}")
+                exit(1)
+            os.chdir(here)
 
-        # Log the installation
-        with open(amp_root / "install.log", "a") as f:
-            f.write(f"{datetime.now().strftime('%Y%m%d-%H%M%S')}: Package: {pkgmeta['name']} Version: {pkgmeta['version']}  Build Date: {pkgmeta['build_date']}\n")
+            # Log the installation
+            with open(amp_root / "install.log", "a") as f:
+                f.write(f"{datetime.now().strftime('%Y%m%d-%H%M%S')}: Package: {pkgmeta['name']} Version: {pkgmeta['version']}  Build Date: {pkgmeta['build_date']}\n")
 
-        logging.info("Installation complete")
+            logging.info("Installation complete")
 
-        if pkgmeta['name'] == 'amp_galaxy':
-            # All of the packages (except for galaxy) are ready to configure as-is.  
-            # force the setup_python to run here so it can be (ab)used later
-            # when configuring it.
-            logging.info("Installing the python venv for galaxy")            
-            subprocess.run(["bash", "-c", f"cd {amp_root / 'galaxy'!s}; source scripts/common_startup_functions.sh; run_common_start_up"], check=True)
-            logging.info("Python venv for galaxy has been installed")            
+            if pkgmeta['name'] == 'amp_galaxy':
+                # All of the packages (except for galaxy) are ready to configure as-is.  
+                # force the setup_python to run here so it can be (ab)used later
+                # when configuring it.
+                #logging.info("Installing the python venv for galaxy")            
+                #subprocess.run(["bash", "-c", f"cd {amp_root / 'galaxy'!s}; source scripts/common_startup_functions.sh; run_common_start_up"], check=True)
+                #logging.info("Python venv for galaxy has been installed")   
+                # Actually, I don't need to do this, because it happens at config time.         
+                pass
+
+            # manually deploy the servlet if it is the UI or REST
+            servlets = {
+                'amp_ui': 'ROOT.war',
+                'amp_rest': 'rest.war'
+            }
+            if pkgmeta['name'] in servlets:
+                logging.info("Deploying war file")
+                warfile = amp_root / f'tomcat/webapps/{servlets[pkgmeta["name"]]}'
+                deployroot = amp_root / f'tomcat/webapps/{Path(servlets[pkgmeta["name"]]).stem}'
+                with zipfile.ZipFile(warfile, 'r') as zfile:
+                    zfile.extractall(deployroot)
 
 
 def action_configure(config, args): 
@@ -333,6 +354,8 @@ def config_ui(config, args):
         vars['VUE_APP_AMP_URL'] = f"http://{config['amp']['host']}:{config['amp']['port']}/rest"
 
     # config.js holds the values we need
+    ### TODO: BUT if this is an initial configuration, there's no ROOT directory yet -- because
+    ### Tomcat hasn't deployed the application from the war file...
     with open(amp_root / "tomcat/webapps/ROOT/config.js", "w") as f:
         f.write("// automatically generated, do not edit\n")
         f.write("window.config = {\n")
