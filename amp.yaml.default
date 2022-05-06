@@ -253,3 +253,9 @@ rest:
         amppd.pythonPath: python3
         amppd.mediaprobeDir: ../MediaProbe/
         amppd.corsOriginPattern: http://localhost:8080
+
+        # timeouts
+        amppd.jwtExpireMinutes: 60
+        amppd.workflowEditMinutes: 60
+        amppd.resetPasswordMinutes: 10
+        amppd.activateAccountDays: 7
