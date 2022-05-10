@@ -77,7 +77,7 @@ def load_config(args):
     except Exception as e:
         logging.error(f"Cannot load config file {args.config!s}: {e}")
         exit(1)
-
+    return config
 
 def action_init(config, args):
     "Create the directories needed for AMP to do it's thing"    

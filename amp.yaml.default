@@ -221,14 +221,12 @@ rest:
     avalon_url: https://avalon.example.edu
     avalon_token: some-really-long-hex-string
 
-
     # paths, relative to the amp:data_root directory, if the value is a relative path
     logging_path: logs
     storage_path: media
     dropbox_path: dropbox
 
     # secrets
-    amppdui_hmgm_secret: hmgm-secret-text
     encryption_secret: encryption-secret-text
     jwt_secret: jwt-secret-text
 
@@ -310,9 +308,43 @@ rest:
 
 mgms:
     # Setup for MGMS
-    # This is configuration for each individual MGM, including things
-    
-    tools:
+    # Configuration for the individual MGMs, including things
+    # like cloud credentials, urls, defaults, etc.
+    aws_comprehend:
+        default_bucket: my-bucket
+        default_access_arn: arn:aws:iam::<some_number>:role/AwsComprehend
+
+    aws_transcribe:
+        default_bucket: my-bucket
+        default_directory: 
+
+    jira:
+        server: https://jira.example.edu
+        username: jira_username
+        password: jira_password
+        project: jira_project_key
+
+    azure:
+        accountId: azure_account_id
+        apiKey: azure_api_key
+        s3Bucket: my-bucket
+
+    aws:
+        aws_access_key_id: my_awsaccess_key
+        aws_secret_access_key: my_aws_secret_access
+        region_name: us-east-2
+
+    hmgm:        
+        auth_key: some random garbage
+        auth_string: auth    
+        transcript_api: /#/hmgm/transcript-editor
+        transcript_input: datasetUrl
+        transcript_media: mediaUrl    
+        ner_api: /#/hmgm/ner-editor
+        ner_input: resourcePath
+        segmentation_api: /#/hmgm/segmentation-editor
+        segmentation_input: inputPath
+
 
 
 
