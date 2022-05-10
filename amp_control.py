@@ -273,19 +273,25 @@ def config_galaxy(config, args):
         logging.error(f"Galaxy database config failed: {e}")
         exit(1)
 
+    logging.info("Creating the galaxy toolbox configuration")
     with open(amp_root / "galaxy/config/tool_conf.xml", "w") as f:
         f.write('<?xml version="1.0" encoding="utf-8"?>\n<toolbox monitor="true">\n')
         counter = 0
-        for s in config['mgms']['galaxy_toolbox']:
+        for s in config['galaxy']['toolbox']:
             f.write(f'  <section id="sect_{counter}" name="{s}">\n')
-            for t in config['mgms']['galaxy_toolbox'][s]:
+            for t in config['galaxy']['toolbox'][s]:
                 f.write(f'    <tool file="{t}"/>\n')
             f.write("  </section>\n")
             counter += 1
         f.write("</toolbox>\n")
 
-    # TODO:  galaxy tool config needs to come from somewhere
-    # TODO:  the config file which is used by the tools themselves.
+    logging.info("Creating the MGM configuration file")
+    with open(amp_root / "galaxy/tools/amp_mgms/amp_mgm.ini", "w") as f:
+        for s in config['mgms']:
+            f.write(f'[{s}]\n')
+            for k,v in config['mgms'][s].items():
+                f.write(f'{k} = {v}\n')
+
 
 
 def config_tomcat(config, args):
@@ -389,89 +395,89 @@ def config_rest(config, args):
         # simple property map
         property_map = {
             # server port and root            
-            'server.port': ('amp', 'port'),
+            'server.port': (['amp', 'port'], None),
             # database creds (host/db/port is handled elsewhere)
-            'spring.datasource.username': ('rest', 'db_user'),
-            'spring.datasource.password': ('rest', 'db_pass'),
+            'spring.datasource.username': (['rest', 'db_user'], None),
+            'spring.datasource.password': (['rest', 'db_pass'], None),
             # initial user
-            'amppd.username': ('rest', 'admin_username'),
-            'amppd.password': ('rest', 'admin_password'), 
-            'amppd.adminEmail': ('rest', 'admin_email'), 
+            'amppd.username': (['rest', 'admin_username'], None),
+            'amppd.password': (['rest', 'admin_password'], None), 
+            'amppd.adminEmail': (['rest', 'admin_email'], None), 
             # galaxy integration
-            "galaxy.host": ('galaxy', 'host', 'localhost'),            
-            "galaxy.root": ('galaxy', 'root'),            
-            "galaxy.username": ('galaxy', 'admin_username'),
-            "galaxy.password": ('galaxy', 'admin_password'),
-            "galaxy.port": ('amp', 'galaxy_port'),  # set during galaxy config generation
-            "galaxy.userId": ('galaxy', "user_id"), # set during galaxy config generation
-            # AMPUI properties
-            'amppdui.hmgmSecretKey': ('rest', 'amppdui_hmgm_secret'),
+            "galaxy.host": (['galaxy', 'host'], 'localhost'),            
+            "galaxy.root": (['galaxy', 'root'], None),            
+            "galaxy.username": (['galaxy', 'admin_username'], None),
+            "galaxy.password": (['galaxy', 'admin_password'], None),
+            "galaxy.port": (['amp', 'galaxy_port'], None),  # set during galaxy config generation
+            "galaxy.userId": (['galaxy', "user_id"], None), # set during galaxy config generation
+            # AMPUI properties           
+            'amppdui.hmgmSecretKey': (['mgms', 'hmgm', 'auth_key'], None),
             # Directories
-            'amppd.fileStorageRoot': ('rest', 'storage_path', 'media', 'path_rel', 'amp', 'data_root'),
-            'amppd.dropboxRoot': ('rest', 'dropbox_path', 'dropbox', 'path_rel', 'amp', 'data_root'),
-            'logging.path': ('rest', 'logging_path', 'logs', 'path_rel', 'amp', 'data_root'),
+            'amppd.fileStorageRoot': (['rest', 'storage_path'], 'media', 'path_rel', ['amp', 'data_root']),
+            'amppd.dropboxRoot': (['rest', 'dropbox_path'], 'dropbox', 'path_rel', ['amp', 'data_root']),
+            'logging.path': (['rest', 'logging_path'], 'logs', 'path_rel', ['amp', 'data_root']),
             # Avalon integration
-            "avalon.url": ('rest', 'avalon_url', 'https://avalon.example.edu'),
-            "avalon.token": ('rest', 'avalon_token', 'dummytoken'),
+            "avalon.url": (['rest', 'avalon_url'], 'https://avalon.example.edu'),
+            "avalon.token": (['rest', 'avalon_token'], 'dummytoken'),
             # secrets             
-            'amppd.encryptionSecret': ('rest', 'encryption_secret'), 
-            'amppd.jwtSecret': ('rest', 'jwt_secret'),
+            'amppd.encryptionSecret': (['rest', 'encryption_secret'], None), 
+            'amppd.jwtSecret': (['rest', 'jwt_secret'], None),
         }
-        
+   
+        def resolve_list(data, path, default=None):
+            # given a data structure and a path, walk it and return the value
+            if len(path) == 1:
+                logging.debug(f"Base case: {data}, {path}, {default}")
+                return data.get(path[0], default)
+            else:
+                v = data.get(path[0], None)
+                logging.debug(f"Lookup: {data}, {path}, {default} = {v}")
+                if v is None or not isinstance(v, dict):
+                    logging.debug("Returning the default")
+                    return default
+                else:
+                    logging.debug(f"Recurse: {v}, {path[1:]}, {default}")
+                    return resolve_list(v, path[1:], default)
+
         # create the configuration
         for key, val in property_map.items():
             if isinstance(val, str):
                 # this is a constant, just write it.
                 f.write(f"{key} = {val}\n")
             elif isinstance(val, tuple):
-                # tuples come in many flavors, but all of them start off with a section value...
-                if val[0] not in config:
+                # every section starts with a reference list
+                logging.debug(f"Looking up {key} {val}")
+                v = resolve_list(config, val[0], val[1])
+                if v is None:
                     logging.error(f"Error setting {key}:  Section {val[0]} doesn't exist in the configuration")
-                if len(val) == 2:
-                    # section and item, fail if not present                    
-                    if val[1] not in config[val[0]]:
-                        logging.error(f"Error setting {key}:  Item {val[1]} isn't in the {val[0]} configuration section")
+                    continue
+                if len(val) < 3:
+                    # write it.
+                    if isinstance(v, bool):
+                        f.write(f"{key} = {'true' if v else 'false'}\n")
                     else:
-                        f.write(f"{key} = {config[val[0]][val[1]]}\n")
-                elif len(val) == 3:
-                    # section, item, and default:
-                    f.write(f"{key} = {config[val[0]].get(val[1], val[2])}\n")
-                elif len(val) > 3:
-                    # section, item, default, and special operation
-                    if val[3] == 'path_rel':
-                        # user value
-                        v = config[val[0]].get(val[1], val[2])
-                        # reference directory
-                        if val[4] not in config:
-                            logging.error(f"Error setting {key}: Section {val[4]} for reference directory doesn't exist")
-                        else:
-                            if val[5] not in config[val[4]]:
-                                logging.error(f"Error setting {key}: Reference item {val[5]} is not in section {val[4]}")
-                            else:
-                                r = config[val[4]][val[5]]
-                                if Path(v).is_absolute():
-                                    f.write(f"{key} = {v}\n")
-                                else:
-                                    this_path = None
-                                    if Path(r).is_absolute():
-                                        this_path = Path(r, v)
-                                    else:
-                                        this_path = Path(amp_root, r, v)
-                                    f.write(f"{key} = {this_path!s}\n")
-                                    # create the directory if we need to
-                                    this_path.mkdir(exist_ok=True)
-                    elif val[3] == 'boolean':
-                        v = config[val[0]].get(val[1], val[2])
-                        if isinstance(v, bool):
-                            v = 'true' if v else 'false'
                         f.write(f"{key} = {v}\n")
-
-                    else:
-                        logging.error(f"Error handling {key}:  special action {val[3]} not supported")
                 else:
-                    logging.error(f"Cannot handle a property map with {len(val)} element tuple for {key}")
-            else:
-                logging.error(f"Don't know how to handle a propertymap value of {val} for {key}")
+                    # there's a function to be called.
+                    if val[2] == 'path_rel':
+                        if Path(v).is_absolute():
+                            f.write(f"{key} = {v}\n")
+                        else:
+                            r = resolve_list(config, val[3], None)
+                            if r is None:
+                                logging.error(f"Error setting {key}:  Section {val[3]} doesn't exist in the configuration")
+                                continue                        
+                            this_path = None
+                            if Path(r).is_absolute():
+                                this_path = Path(r, v)
+                            else:
+                                this_path = Path(amp_root, r, v)
+                            f.write(f"{key} = {this_path!s}\n")
+                            # create the directory if we need to
+                            this_path.mkdir(exist_ok=True)
+                    else:
+                        logging.error(f"Error handling {key}:  special action {val[2]} not supported")
+
 
         # these are things which are "hard" and can't be done through the generic mechanism.        
         # datasource configuration
