@@ -25,6 +25,9 @@ config = None
 tomcat_download_url_base = "https://archive.apache.org/dist/tomcat/tomcat-9/"
 tomcat_download_version = "9.0.62"
 
+# mediaprobe repo
+mediaprobe_repo = "https://github.com/IUMDPI/MediaProbe.git"
+
 # TODO/Wishlist:
 #  * should there be a 'download' option to download the latest packages from our site?
 
@@ -103,9 +106,17 @@ def action_init(config, args):
             logging.info(f"Creating {d!s}")
             d.mkdir(parents=True)
 
-    # mediaprobe needs to be checked out.
-    # TODO
-
+    # mediaprobe needs to be checked out and setup in data/MediaProbe.
+    if not (amp_root / "data/MediaProbe").exists():
+        logging.info("Checking out mediaprobe repository")
+        here = os.getcwd()
+        os.chdir(amp_root / "data")
+        subprocess.run(['git', 'clone', mediaprobe_repo], check=True)
+        # we really don't need to do any setup -- the only
+        # module that MediaProbe needs is pyyaml, which is
+        # something that /this/ script needs, so it can
+        # be run without dealing with the pipenv stuff.        
+        os.chdir(here)
 
 
 def action_install(config, args):
