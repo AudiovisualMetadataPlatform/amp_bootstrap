@@ -125,6 +125,7 @@ galaxy:
         allow_path_paste: true
         require_login: true
         allow_user_creation: false
+        tool_config_file: tool_conf.xml
         x_frame_options:
         logging:
             version: 1

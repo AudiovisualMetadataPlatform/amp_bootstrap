@@ -245,10 +245,9 @@ def config_galaxy(config, args):
     here = os.getcwd()
     os.chdir(amp_root / "galaxy")
     try:
-        p = subprocess.run(['scripts/common_startup.sh'], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
+        subprocess.run(['scripts/common_startup.sh'], check=True)
     except Exception as e:
         logging.error(f"Could not set up galaxy python: {e}")
-        logging.error(p.stdout)
         exit(1)
     galaxy_python = str(amp_root / "galaxy/.venv/bin/python")
 
