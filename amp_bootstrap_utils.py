@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 from datetime import datetime
 import tempfile
+import shutil
 
 def get_amp_root(service=''):
     "The installation root is the grandparent of this file"
@@ -86,7 +87,7 @@ def write_galaxy_config(data, file):
 
 
 
-def build_package(srcdir, destdir, pkgname, version=None ):
+def build_package(srcdir, destdir, pkgname, version=None, install_path=None ):
     "build a package and return its name"
     if version is None:
         version = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -106,8 +107,17 @@ def build_package(srcdir, destdir, pkgname, version=None ):
             'version': version,
             'build_date': buildtime,   
         }
+        if install_path is not None:
+            metadata['install_path'] = install_path
+
         with open(workdir / "amp_package.yaml", "w") as f:
             yaml.safe_dump(metadata, f)
+
+        # copy any configuration and install scripts to the root of the package
+        for script in ('amp_configure.py', 'amp_install.py'):
+            if Path(srcdir, script).exists():
+                shutil.copy(Path(srcdir, script), workdir)
+
 
         # copy source data to data directory
         datadir = workdir / "data"
