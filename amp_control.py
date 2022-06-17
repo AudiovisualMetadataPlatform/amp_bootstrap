@@ -180,6 +180,7 @@ def action_install(config, args):
                 deployroot = amp_root / f'tomcat/webapps/{Path(servlets[pkgmeta["name"]]).stem}'
                 with zipfile.ZipFile(warfile, 'r') as zfile:
                     zfile.extractall(deployroot)
+                warfile.unlink()
 
 
 def action_configure(config, args): 
