@@ -310,3 +310,31 @@ It is important to stop AMP before:
 * Updating the configuration
 
 
+# Developing AMP
+If you wish to modify/enhance AMP, you can use the package installation as a starting point:
+
+* Install AMP as described above
+* Create a src_repos directory in the AMP installation directory
+* Check out the AMP repositories you wish to modify:  amp_mgms, amppd, amp_ui, or galaxy.
+* Make code changes as desired
+* You can use these methods (and others) to see your changes:
+  * Use packaging
+    * Guaranteed to work, but can be cumbersome
+    * In the repository directory run `./amp_build.py --package ../../packages` to create a new package
+    * In the amp_bootstrap directory:
+      * Shut down AMP:  `./amp_control.py stop all`
+      * Install the new package: `./amp_control.py install ../packages/<name of the new package>`
+      * Reconfigure AMP: `./amp_control.py configure`
+      * Start AMP: `./amp_control.py start all`
+  * Directly update the AMP installation
+    * This may or may not work depending on what you're changing...will likely work for the UI and MGMs
+    * In the repository directory run `./amp_build.py` with a destination directory relevant for the repository
+    * Ta da!
+  * Point standalone code to the installation
+    * Start a new instance of whatever you're working on...such as the REST backend or Galaxy
+    * Modify the AMP configuration to use your new instance
+    * Shut down AMP 
+    * Configure AMP
+    * Restart AMP
+    * Now it should be using your code rather than the previously installed code.
+    
