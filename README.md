@@ -100,6 +100,9 @@ mkdir /srv/amp
 chown -R amp.amp /srv/amp
 ```
 
+### Singularity binding
+If the AMP installation path is not within the amp user's home directory, singularity containers may fail to start.  To resolve this issue, add the "bind path" to /etc/singularity/singularity.conf
+
 ## Open the firewall
 Most Linux distributions firewall ports by default.  Open the firewall for the main AMP port:
 
