@@ -1,0 +1,37 @@
+#!/bin/bash
+# fail on any error
+set -e
+
+# Deferring the PostgreSQL stuff until later in the process...
+
+# On a normal system we'd run things as an AMP user, but
+# in a container that's not strictly necessary. So we're
+# just going to do everything as root until I discover
+# that it's a bad idea later...
+
+# Create the AMP directory
+mkdir /srv/amp
+cd /srv/amp
+
+# Update the singularity path to bind /srv/amp when running
+echo "bind path = /srv/amp" >> /etc/singularity/singularity.conf
+
+# No need to open the firewall
+
+# Install the bootstrap
+git clone https://github.com/AudiovisualMetadataPlatform/amp_bootstrap.git
+
+# Intialize the amp directory tree
+# We can do this because nothing in the initialization requires the configuration to be correct
+cd amp_bootstrap
+./amp_control.py init
+
+# We don't want to modify the container when things change or new data comes 
+# in, so make some symlinks for things which we know we'll be modifying at
+# deployment time that we'll point to the external volume.
+EXT_VOL="/mnt/amp"
+
+mkdir -p $EXT_VOL
+mkdir -p $EXT_VOL/pgsql
+mkdir -p $EXT_VOL/galaxy
+ln -s $EXT_VOL/amp.yaml amp.yaml   # the not-yet-existing config file
