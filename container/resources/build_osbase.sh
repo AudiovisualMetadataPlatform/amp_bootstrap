@@ -3,7 +3,8 @@
 set -e
 
 # Standard Packages
-dnf install -y python39 python39-pyyaml java-11-openjdk git gcc python39-devel zlib-devel
+dnf update -y
+dnf install -y python39 python39-pyyaml java-11-openjdk git gcc python39-devel zlib-devel wget
 
 # FFMPEG from RPM Fusion
 dnf install -y dnf-plugin-subscription-manager

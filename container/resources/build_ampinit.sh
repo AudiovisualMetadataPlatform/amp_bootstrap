@@ -25,13 +25,3 @@ git clone https://github.com/AudiovisualMetadataPlatform/amp_bootstrap.git
 # We can do this because nothing in the initialization requires the configuration to be correct
 cd amp_bootstrap
 ./amp_control.py init
-
-# We don't want to modify the container when things change or new data comes 
-# in, so make some symlinks for things which we know we'll be modifying at
-# deployment time that we'll point to the external volume.
-EXT_VOL="/mnt/amp"
-
-mkdir -p $EXT_VOL
-mkdir -p $EXT_VOL/pgsql
-mkdir -p $EXT_VOL/galaxy
-ln -s $EXT_VOL/amp.yaml amp.yaml   # the not-yet-existing config file
