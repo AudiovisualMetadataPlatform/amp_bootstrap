@@ -123,7 +123,10 @@ def action_install(config, args):
             # I think unpack archive is broken in some situations...I seem to
             # be losing the executable bits :(
             #shutil.unpack_archive(str(package), str(tmpdir))
-            subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xvf' if args.debug else '-xf', str(package)])
+            subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xvvf' if args.debug else '-xf', str(package)])
+            if args.debug:
+                subprocess.run(f'ls -alR {tmpdir} > /dev/stderr', shell=True)
+
             pkg_stem = package.stem.replace('.tar', '')
             if not Path(tmpdir, pkg_stem).exists():
                 logging.error("Package doesn't contain a directory that matches the package stem")
