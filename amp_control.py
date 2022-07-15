@@ -165,7 +165,7 @@ def action_install(config, args):
             try:
                 subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
                 if args.debug:
-                    subprocess.run(f'ls -alR {str(install_path)} > /dev/stderr')
+                    subprocess.run(f'ls -alR {str(install_path)} > /dev/stderr', shell=True)
             
             except Exception as e:
                 print(f"Copying package failed: {e}")
