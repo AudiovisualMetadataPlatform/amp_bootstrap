@@ -29,5 +29,3 @@ cd amp_bootstrap
 git checkout AMP-2057
 
 ./amp_control.py init
-
-echo "Donexasdfs"

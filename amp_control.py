@@ -124,8 +124,8 @@ def action_install(config, args):
             # be losing the executable bits :(
             #shutil.unpack_archive(str(package), str(tmpdir))
             subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xvvf' if args.debug else '-xf', str(package)])
-            if args.debug:
-                subprocess.run(f'ls -alR {tmpdir} > /dev/stderr', shell=True)
+            #if args.debug:
+            #    subprocess.run(f'ls -alR {tmpdir} > /dev/stderr', shell=True)
 
             pkg_stem = package.stem.replace('.tar', '')
             if not Path(tmpdir, pkg_stem).exists():
@@ -164,8 +164,8 @@ def action_install(config, args):
             os.chdir(pkgroot / "data")
             try:
                 subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
-                if args.debug:
-                    subprocess.run(f'ls -alR {str(install_path)} > /dev/stderr', shell=True)
+                #if args.debug:
+                #    subprocess.run(f'ls -alR {str(install_path)} > /dev/stderr', shell=True)
             
             except Exception as e:
                 print(f"Copying package failed: {e}")
