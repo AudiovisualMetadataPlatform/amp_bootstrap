@@ -25,3 +25,4 @@ git clone https://github.com/AudiovisualMetadataPlatform/amp_bootstrap.git
 # We can do this because nothing in the initialization requires the configuration to be correct
 cd amp_bootstrap
 ./amp_control.py init
+

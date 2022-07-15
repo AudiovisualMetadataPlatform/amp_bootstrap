@@ -27,7 +27,7 @@ done
 cd /srv/amp/amp_bootstrap
 ./amp_control.py install --yes ../packages/amp_galaxy*
 ./amp_control.py install --yes ../packages/amp_[mru]*
-
+/bin/false
 
 # Remove the package files
 rm -v /srv/amp/packages/*

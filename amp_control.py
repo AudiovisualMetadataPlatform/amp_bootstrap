@@ -157,7 +157,11 @@ def action_install(config, args):
             here = Path.cwd().resolve()
             os.chdir(pkgroot / "data")
             try:
+                if args.debug:
+                    subprocess.run(['ls', '-al', '.'])
                 subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
+                if args.debug:
+                    subprocess.run(['ls', '-al', str(install_path)])
             except Exception as e:
                 print(f"Copying package failed: {e}")
                 exit(1)
