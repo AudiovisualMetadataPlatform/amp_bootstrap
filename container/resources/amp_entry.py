@@ -12,6 +12,7 @@ import shutil
 import random
 import subprocess
 import signal
+import time
 
 AMP_ROOT=Path("/srv/amp")
 DATA_ROOT=Path("/srv/amp-data")
@@ -51,9 +52,17 @@ def main():
         # Set up our symlinks if we need to
         setup_symlinks(config)
 
+        # Configure amp
+        configure_amp(config)
+
+        # Start/run amp
+        run_amp(config)
+
 
         logging.info("So long, suckers!")
-    except:
+    except SystemExit:
+        pass
+    except Exception:
         logging.exception('Main exception handler caught an exception')
 
 
@@ -133,7 +142,7 @@ host   all  all       ::1/128        md5
                    shell=True, check=True)
     (DATA_ROOT / "db.sql").unlink()
 
-    logging.info("Postgres should be running.")
+    logging.info("Postgres should now be running.")
 
 
 def setup_symlinks(config):
@@ -141,11 +150,14 @@ def setup_symlinks(config):
        pointing to the mounted data, rather than
        within the base container"""
     symlinks = (
+        'galaxy/tools/amp_mgms/logs',
         'galaxy/tools/logs',
         'galaxy/logs',
+        'galaxy/galaxy.log',
         'galaxy/database',
         'data/symlinks',
-        'tomcat/logs'
+        'tomcat/logs',
+        'tomcat/temp'
     )
     for s in symlinks:
         src = DATA_ROOT / s
@@ -159,6 +171,64 @@ def setup_symlinks(config):
                 dst.unlink()
         dst.symlink_to(src)
         
+
+def configure_amp(config):
+    """
+    Run the amp configuration to set up everything
+    """
+    subprocess.run([AMP_ROOT / "amp_bootstrap/amp_control.py", 'configure'], check=True)
+    logging.info("AMP has been configured.")
+
+
+def run_amp(config):
+    """
+    This function is the main amp manager.  It won't return until
+    galaxy, postgres, or tomcat shut down
+    """
+    # start galaxy and wait for the initialization to finish
+    subprocess.run([AMP_ROOT / "amp_bootstrap/amp_control.py", "start", "galaxy"], check=True)
+    logging.info("Galaxy started.")
+
+    subprocess.run([AMP_ROOT / "amp_bootstrap/amp_control.py", "start", "tomcat"], check=True)
+    logging.info("Tomcat started")
+
+    # special case:  we have to bootstrap the amp default unit if we haven't done it yet.
+    if not (DATA_ROOT / ".default_unit").exists():
+        logging.info("Creating the default unit")
+        subprocess.run([AMP_ROOT / "amp_bootstrap/bootstrap_rest_unit.py"])
+        (DATA_ROOT / ".default_unit").touch()
+
+    # Everything should be up and running.  Wait for a service to die and then exit
+    while(True):
+        time.sleep(60)
+        logging.info("Keepalive")
+        
+        # Galaxy's PID is in galaxy/galaxy.pid
+        with open(AMP_ROOT / "galaxy/galaxy.pid") as f:
+            pid = f.readline().strip()
+            if not Path("/proc/{pid}").exists():
+                logging.warning(f"Galaxy with PID {pid} has died")
+                break
+
+        # Tomcat doesn't have a PID file by default, so
+        # just look around in /proc for a tomcat
+        for pdir in Path("/proc").iterdir():
+            if pdir.is_dir() and pdir.name[0] in '1234567890':
+                cmdline = (pdir / "cmdline").read_text()
+                if 'org.apache.catalina.startup.Bootstrap' in cmdline:
+                    break
+        else:
+            # we never found that command line.
+            logging.warning("Failed to find a running tomcat")
+            break
+
+        # Postgres's pidfile is in /srv/amp-data/postgres/postmaster.pid
+        with open(DATA_ROOT / "postgres/postmaster.pid") as f:
+            pid = f.readline().strip()
+            if not Path("/proc/{pid}").exists():
+                logging.warning(f"Postgres with PID {pid} has died")
+                break      
+
 
 
 

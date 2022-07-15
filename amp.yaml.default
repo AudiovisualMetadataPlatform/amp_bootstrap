@@ -300,6 +300,8 @@ rest:
         amppd.pythonPath: python3
         amppd.mediaprobeDir: ../MediaProbe/
         amppd.corsOriginPattern: http://localhost:8080
+        amppd.supplementCategories: Face,Transcript,Vocabulary,Program,Groundtruth,Other
+
 
         # timeouts
         amppd.jwtExpireMinutes: 60
