@@ -120,7 +120,10 @@ def action_install(config, args):
     for package in [Path(x) for x in args.package]:
         with tempfile.TemporaryDirectory(prefix="amp_bootstrap_") as tmpdir:
             logging.debug(f"Unpacking package {package!s} into {tmpdir}")
-            shutil.unpack_archive(str(package), str(tmpdir))
+            # I think unpack archive is broken in some situations...I seem to
+            # be losing the executable bits :(
+            #shutil.unpack_archive(str(package), str(tmpdir))
+            subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xvf' if args.debug else '-xf', str(package)])
             pkg_stem = package.stem.replace('.tar', '')
             if not Path(tmpdir, pkg_stem).exists():
                 logging.error("Package doesn't contain a directory that matches the package stem")
@@ -157,13 +160,7 @@ def action_install(config, args):
             here = Path.cwd().resolve()
             os.chdir(pkgroot / "data")
             try:
-                if args.debug:
-                    print("Original data/tools directory:")
-                    subprocess.run(['ls', '-al', 'tools/amp_mgms'])
                 subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
-                if args.debug:
-                    print("Installed data directory:")
-                    subprocess.run(['ls', '-al', str(install_path / 'tools/amp_mgms')])
             except Exception as e:
                 print(f"Copying package failed: {e}")
                 exit(1)

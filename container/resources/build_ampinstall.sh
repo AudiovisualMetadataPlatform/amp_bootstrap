@@ -2,6 +2,8 @@
 # exit on errors
 set -e
 
+umask 022
+
 # Download the packages
 cd /srv/amp/packages
 BASEURL=https://dlib.indiana.edu/AMP-packages
