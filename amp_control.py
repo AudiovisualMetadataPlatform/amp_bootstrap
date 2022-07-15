@@ -159,11 +159,11 @@ def action_install(config, args):
             try:
                 if args.debug:
                     print("Original data/tools directory:")
-                    subprocess.run(['ls', '-al', 'tools'])
+                    subprocess.run(['ls', '-al', 'tools/amp_mgms'])
                 subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
                 if args.debug:
                     print("Installed data directory:")
-                    subprocess.run(['ls', '-al', str(install_path / 'tools')])
+                    subprocess.run(['ls', '-al', str(install_path / 'tools/amp_mgms')])
             except Exception as e:
                 print(f"Copying package failed: {e}")
                 exit(1)
