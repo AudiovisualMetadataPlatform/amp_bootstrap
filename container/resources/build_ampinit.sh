@@ -24,5 +24,10 @@ git clone https://github.com/AudiovisualMetadataPlatform/amp_bootstrap.git
 # Intialize the amp directory tree
 # We can do this because nothing in the initialization requires the configuration to be correct
 cd amp_bootstrap
+
+# DEBUGGING the current branch!
+git checkout AMP-2057
+
 ./amp_control.py init
 
+echo "Done"
