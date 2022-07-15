@@ -11,7 +11,6 @@ import yaml
 import shutil
 import random
 import subprocess
-import signal
 import time
 
 AMP_ROOT=Path("/srv/amp")
@@ -37,9 +36,6 @@ def main():
     try:
         # make sure there's a config
         test_config()
-
-        # we're init.  let's act like it
-        setup_signal_handlers()
 
         # load the configuration since other things are going to need it
         # and by loading it we can make sure it's a valid yaml file.
@@ -82,6 +78,7 @@ def test_config():
     default['galaxy']['admin_username'] = 'ampuser@example.edu'
     default['galaxy']['admin_password'] = gen_garbage(12)
     default['galaxy']['id_secret'] = gen_garbage(25)
+    default['galaxy'].pop('host')  # bind to all interfaces
     default['mgms']['hmgm']['auth_key'] = gen_garbage(32)
     default['rest']['admin_password'] = gen_garbage(12)
     default['rest']['jwt_secret'] = gen_garbage(15)
@@ -93,18 +90,6 @@ def test_config():
     logging.warning("A new configuration has been generated.  Update the configuration and restart the container")
     exit(0)
 
-
-def setup_signal_handlers():
-    """This script needs to act like an init process, so that means
-       we have to handle (at least) sigchld to make sure I don't end
-       up with a pile of zombies.  Set up the handlers here"""
-    def sig_handler(signum, frame):
-        if signum == signal.SIGCHLD:
-            logging.debug("Got a SIGCHLD")
-        else:
-            logging.warning("Unhandled signal: ", signum)
-
-    signal.signal(signal.SIGCHLD, sig_handler)
 
 
 def start_postgres(config):
@@ -163,7 +148,11 @@ def setup_symlinks(config):
         src = DATA_ROOT / s
         dst = AMP_ROOT / s
         logging.debug(f"Creating symlink: {dst!s} -> {src!s}")
-        src.mkdir(parents=True, exist_ok=True)
+        if dst.is_dir():
+            src.mkdir(parents=True, exist_ok=True)
+        else:
+            src.parent.mkdir(parents=True, exist_ok=True)
+            src.touch()
         if dst.exists():
             if dst.is_dir():
                 shutil.rmtree(dst)
@@ -195,19 +184,33 @@ def run_amp(config):
     # special case:  we have to bootstrap the amp default unit if we haven't done it yet.
     if not (DATA_ROOT / ".default_unit").exists():
         logging.info("Creating the default unit")
-        subprocess.run([AMP_ROOT / "amp_bootstrap/bootstrap_rest_unit.py"])
-        (DATA_ROOT / ".default_unit").touch()
+        # let tomcat settle down so we can do this.
+        time.sleep(30)
+        try:
+            subprocess.run([AMP_ROOT / "amp_bootstrap/bootstrap_rest_unit.py"], check=True)
+            (DATA_ROOT / ".default_unit").touch()
+        except Exception:
+            logging.error("Could not set up the default unit. Restart the container OR")
+            logging.error(f"Connect to the container and run {AMP_ROOT}/amp_bootstrap/bootstrap_rest_unit.py manually")
+            logging.error(f"and touch {DATA_ROOT}/.default_unit")
 
     # Everything should be up and running.  Wait for a service to die and then exit
     while(True):
-        time.sleep(60)
-        logging.info("Keepalive")
-        
+        time.sleep(10)
+
+        # we're init, so let's act like it: reap any children
+        # that come our way.
+        pid = 1
+        while pid > 0:
+            pid, status = os.waitpid(-1, os.WNOHANG)
+            if pid > 0:
+                logging.debug(f"Reaped pid {pid}: {status}")
+
         # Galaxy's PID is in galaxy/galaxy.pid
         with open(AMP_ROOT / "galaxy/galaxy.pid") as f:
             pid = f.readline().strip()
-            if not Path("/proc/{pid}").exists():
-                logging.warning(f"Galaxy with PID {pid} has died")
+            if not Path(f"/proc/{pid}").exists():
+                logging.error(f"Galaxy with PID {pid} has died")
                 break
 
         # Tomcat doesn't have a PID file by default, so
@@ -219,14 +222,14 @@ def run_amp(config):
                     break
         else:
             # we never found that command line.
-            logging.warning("Failed to find a running tomcat")
+            logging.error("Failed to find a running tomcat")
             break
 
         # Postgres's pidfile is in /srv/amp-data/postgres/postmaster.pid
         with open(DATA_ROOT / "postgres/postmaster.pid") as f:
             pid = f.readline().strip()
-            if not Path("/proc/{pid}").exists():
-                logging.warning(f"Postgres with PID {pid} has died")
+            if not Path(f"/proc/{pid}").exists():
+                logging.error(f"Postgres with PID {pid} has died")
                 break      
 
 
