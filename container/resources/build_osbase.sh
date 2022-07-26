@@ -4,7 +4,7 @@ set -e
 
 # Standard Packages
 dnf update -y
-dnf install -y python39 python39-pyyaml java-11-openjdk git gcc python39-devel zlib-devel wget
+dnf install -y python39 python39-pyyaml java-11-openjdk git gcc python39-devel zlib-devel wget postfix 
 
 # FFMPEG from RPM Fusion
 dnf install -y dnf-plugin-subscription-manager
@@ -24,6 +24,10 @@ dnf install -y postgresql12 postgresql12-server
 
 # Install ansible for container setup (from EPEL)
 dnf install -y ansible
+
+# install pipenv for mediaprobe
+pip3 install pipenv
+
 
 # clean up what we can
 dnf clean all

@@ -42,6 +42,9 @@ def main():
         with open(DATA_ROOT / "amp.yaml") as f:
             config = yaml.safe_load(f)
 
+        # start OS daemons
+        start_daemons(config)
+
         # start/configure postgres
         start_postgres(config)
 
@@ -90,6 +93,12 @@ def test_config():
     logging.warning("A new configuration has been generated.  Update the configuration and restart the container")
     exit(0)
 
+
+def start_daemons(config):
+    "Start operating system daemons"
+    # postfix
+    logging.info("Starting postfix")
+    subprocess.run(['postfix', '-c', '/etc/postfix', 'start'], check=True)
 
 
 def start_postgres(config):
@@ -141,6 +150,9 @@ def setup_symlinks(config):
         'galaxy/galaxy.log',
         'galaxy/database',
         'data/symlinks',
+        'data/dropbox',
+        'data/logs',
+        'data/media',
         'tomcat/logs',
         'tomcat/temp'
     )

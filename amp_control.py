@@ -15,6 +15,8 @@ import urllib.request
 import tarfile
 from datetime import datetime
 import zipfile
+import urllib
+import re
 
 amp_root = Path(sys.path[0]).parent
 config = None
@@ -38,6 +40,9 @@ def main():
     subp.required = True
     p = subp.add_parser('init', help="Initialize the AMP installation")
     p.add_argument("--force", default=False, action="store_true", help="Force a reinitialization of the environment")
+    p = subp.add_parser('download', help='Download AMP packages')
+    p.add_argument('url', help="URL amp packages directory")
+    p.add_argument('dest', help="Destination directory for packages")
     p = subp.add_parser('start', help="Start one or more services")
     p.add_argument("service", help="AMP service to start, or 'all' for all services")
     p = subp.add_parser('stop', help="Stop one or more services")
@@ -48,6 +53,8 @@ def main():
     p = subp.add_parser('install', help="Install a service")
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
     p.add_argument("package", nargs="+", help="Package file(s) to install")    
+
+    
     args = parser.parse_args()
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
@@ -113,6 +120,33 @@ def action_init(config, args):
         # something that /this/ script needs, so it can
         # be run without dealing with the pipenv stuff.        
         os.chdir(here)
+
+
+def action_download(config, args):
+    "download packages from URL directory"
+    logging.error("Unimplemented.")
+    exit(0)
+
+    dest = Path(args.dest)
+    if not dest.exists() or not dest.is_dir():
+        logging.error("Destination directory doesn't exist or isn't a directory")
+        exit(1)
+    
+    # open the page and look for any hrefs which are tars..
+    try:
+        with urllib.request.urlopen(args.url) as f:            
+            package_urls = []
+            page = f.read().decode('utf-8')
+            for m in re.finditer(r'href="(.+?)"', page):
+                file = m.group(1)
+                if file.endswith('.tar'):
+                    # probably a package
+                    print(m.group(1))
+
+
+    except Exception:
+        logging.exception("Some exception was thrown")
+        exit(1)
 
 
 def action_install(config, args):
