@@ -231,8 +231,8 @@ rest:
     encryption_secret: encryption-secret-text
     jwt_secret: jwt-secret-text
 
-    # external tools
-    mediaprobe_dir: ../MediaProbe/
+    # mediaprobe location (relative to amp:data_root)
+    mediaprobe_dir: MediaProbe
 
 
     # These properties are to populate the "boilerplate" bits of

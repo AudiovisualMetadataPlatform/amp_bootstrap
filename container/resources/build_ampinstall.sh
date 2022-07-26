@@ -6,21 +6,8 @@ umask 022
 
 # Download the packages
 cd /srv/amp/packages
-BASEURL=https://dlib.indiana.edu/AMP-packages
-for n in \
-    amp_galaxy-21.01.tar \
-    amp_mgms-applause_detection-0.1.0.tar \
-    amp_mgms-aws-0.1.0.tar \
-    amp_mgms-azure-0.1.0.tar \
-    amp_mgms-gentle-0.1.0.tar \
-    amp_mgms-hmgms-0.1.0.tar \
-    amp_mgms-ina_speech_segmenter-0.1.0.tar \
-    amp_mgms-kaldi-0.1.0.tar \
-    amp_mgms-mgm_python-0.1.0.tar \
-    amp_mgms-mgms-0.1.0.tar \
-    amp_rest-0.0.1-SNAPSHOT.tar \
-    amp_ui-0.1.0.tar \
-    ; do
+BASEURL=https://dlib.indiana.edu/AMP-packages/current
+for n in `curl $BASEURL/manifest.txt`; do
     echo $n
     curl -o $n $BASEURL/$n
 done
@@ -39,4 +26,4 @@ cd /srv/amp/galaxy
 export GALAXY_ROOT=`pwd`
 sh scripts/common_startup.sh
 
-# force rebuild (20220726-1516)
+# force rebuild (20220726-1538)
