@@ -231,6 +231,10 @@ rest:
     encryption_secret: encryption-secret-text
     jwt_secret: jwt-secret-text
 
+    # mediaprobe location (relative to amp:data_root)
+    mediaprobe_dir: MediaProbe
+
+
     # These properties are to populate the "boilerplate" bits of
     # application properties.  You shouldn't need to change any of these...
     properties:
@@ -298,8 +302,10 @@ rest:
         amppd.accountActivationTokenExpiration: 604800
         amppd.environment: prod
         amppd.pythonPath: python3
-        amppd.mediaprobeDir: ../MediaProbe/
+        
         amppd.corsOriginPattern: http://localhost:8080
+        amppd.supplementCategories: Face,Transcript,Vocabulary,Program,Groundtruth,Other
+
 
         # timeouts
         amppd.jwtExpireMinutes: 60

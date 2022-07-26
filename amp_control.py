@@ -15,6 +15,8 @@ import urllib.request
 import tarfile
 from datetime import datetime
 import zipfile
+import urllib
+import re
 
 amp_root = Path(sys.path[0]).parent
 config = None
@@ -38,6 +40,9 @@ def main():
     subp.required = True
     p = subp.add_parser('init', help="Initialize the AMP installation")
     p.add_argument("--force", default=False, action="store_true", help="Force a reinitialization of the environment")
+    p = subp.add_parser('download', help='Download AMP packages')
+    p.add_argument('url', help="URL amp packages directory")
+    p.add_argument('dest', help="Destination directory for packages")
     p = subp.add_parser('start', help="Start one or more services")
     p.add_argument("service", help="AMP service to start, or 'all' for all services")
     p = subp.add_parser('stop', help="Stop one or more services")
@@ -48,6 +53,8 @@ def main():
     p = subp.add_parser('install', help="Install a service")
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
     p.add_argument("package", nargs="+", help="Package file(s) to install")    
+
+    
     args = parser.parse_args()
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
@@ -115,12 +122,45 @@ def action_init(config, args):
         os.chdir(here)
 
 
+def action_download(config, args):
+    "download packages from URL directory"
+    logging.error("Unimplemented.")
+    exit(0)
+
+    dest = Path(args.dest)
+    if not dest.exists() or not dest.is_dir():
+        logging.error("Destination directory doesn't exist or isn't a directory")
+        exit(1)
+    
+    # open the page and look for any hrefs which are tars..
+    try:
+        with urllib.request.urlopen(args.url) as f:            
+            package_urls = []
+            page = f.read().decode('utf-8')
+            for m in re.finditer(r'href="(.+?)"', page):
+                file = m.group(1)
+                if file.endswith('.tar'):
+                    # probably a package
+                    print(m.group(1))
+
+
+    except Exception:
+        logging.exception("Some exception was thrown")
+        exit(1)
+
+
 def action_install(config, args):
     # extract the package and validate that it's OK
     for package in [Path(x) for x in args.package]:
         with tempfile.TemporaryDirectory(prefix="amp_bootstrap_") as tmpdir:
             logging.debug(f"Unpacking package {package!s} into {tmpdir}")
-            shutil.unpack_archive(str(package), str(tmpdir))
+            # I think unpack archive is broken in some situations...I seem to
+            # be losing the executable bits :(
+            #shutil.unpack_archive(str(package), str(tmpdir))
+            subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xvvf' if args.debug else '-xf', str(package)])
+            #if args.debug:
+            #    subprocess.run(f'ls -alR {tmpdir} > /dev/stderr', shell=True)
+
             pkg_stem = package.stem.replace('.tar', '')
             if not Path(tmpdir, pkg_stem).exists():
                 logging.error("Package doesn't contain a directory that matches the package stem")
@@ -158,6 +198,9 @@ def action_install(config, args):
             os.chdir(pkgroot / "data")
             try:
                 subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
+                #if args.debug:
+                #    subprocess.run(f'ls -alR {str(install_path)} > /dev/stderr', shell=True)
+            
             except Exception as e:
                 print(f"Copying package failed: {e}")
                 exit(1)
@@ -420,6 +463,7 @@ def config_rest(config, args):
             'amppd.fileStorageRoot': (['rest', 'storage_path'], 'media', 'path_rel', ['amp', 'data_root']),
             'amppd.dropboxRoot': (['rest', 'dropbox_path'], 'dropbox', 'path_rel', ['amp', 'data_root']),
             'logging.path': (['rest', 'logging_path'], 'logs', 'path_rel', ['amp', 'data_root']),
+            'amppd.mediaprobeDir': (['rest', 'mediaprobe_dir'], 'MediaProbe', 'path_rel', ['amp', 'data_root']),
             # Avalon integration
             "avalon.url": (['rest', 'avalon_url'], 'https://avalon.example.edu'),
             "avalon.token": (['rest', 'avalon_token'], 'dummytoken'),
@@ -477,8 +521,9 @@ def config_rest(config, args):
                             else:
                                 this_path = Path(amp_root, r, v)
                             f.write(f"{key} = {this_path!s}\n")
-                            # create the directory if we need to
-                            this_path.mkdir(exist_ok=True)
+                            # create the directory if we need to (need the check because it may be symlink)
+                            if not this_path.exists():
+                                this_path.mkdir(exist_ok=True)
                     else:
                         logging.error(f"Error handling {key}:  special action {val[2]} not supported")
 
@@ -496,6 +541,7 @@ def config_rest(config, args):
         #  amppdui.documentRoot -- this should be somewhere in the tomcat tree.
         f.write(f"amppdui.documentRoot = {amp_root}/tomcat/webapps/ROOT\n")
         f.write(f"amppdui.symlinkDir = {amp_root}/{config['amp']['data_root']}/symlinks\n")
+                        
         f.write("# boilerplate properties\n")
         for k,v in config['rest']['properties'].items():
             if isinstance(v, bool):
