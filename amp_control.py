@@ -397,7 +397,11 @@ def config_ui(config, args):
             'VUE_APP_AMP_UNIT': config['ui']['unit'],
             'VUE_APP_USER_GUIDE': config['ui']['user_guide_url']}
             
-
+    # VUE_AMP_DOC keys
+    if 'user_guide' in config['ui']:
+        for k in config['ui']['user_guide']:
+            vars[f'VUE_AMP_DOC_{k}'] = config['ui']['user_guide'][k]
+    
     if config['amp'].get('use_https', False):
         vars['VUE_APP_AMP_URL'] = f"https://{config['amp']['host']}/rest"
         vars['VUE_APP_GALAXY_WORKFLOW_URL'] = f"https://{config['amp']['host']}/rest/galaxy/workflow/editor?id="
