@@ -520,8 +520,9 @@ def config_rest(config, args):
                             else:
                                 this_path = Path(amp_root, r, v)
                             f.write(f"{key} = {this_path!s}\n")
-                            # create the directory if we need to
-                            this_path.mkdir(exist_ok=True)
+                            # create the directory if we need to (need the check because it may be symlink)
+                            if not this_path.exists():
+                                this_path.mkdir(exist_ok=True)
                     else:
                         logging.error(f"Error handling {key}:  special action {val[2]} not supported")
 
