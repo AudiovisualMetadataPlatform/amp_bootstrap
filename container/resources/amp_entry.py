@@ -144,23 +144,23 @@ def setup_symlinks(config):
        pointing to the mounted data, rather than
        within the base container"""
     symlinks = (
-        'galaxy/tools/amp_mgms/logs',
-        'galaxy/tools/logs',
-        'galaxy/logs',
+        'galaxy/tools/amp_mgms/logs/',
+        'galaxy/tools/logs/',
+        'galaxy/logs/',
         'galaxy/galaxy.log',
-        'galaxy/database',
-        'data/symlinks',
-        'data/dropbox',
-        'data/logs',
-        'data/media',
-        'tomcat/logs',
-        'tomcat/temp'
+        'galaxy/database/',
+        'data/symlinks/',
+        'data/dropbox/',
+        'data/logs/',
+        'data/media/',
+        'tomcat/logs/',
+        'tomcat/temp/'
     )
     for s in symlinks:
         src = DATA_ROOT / s
         dst = AMP_ROOT / s
         logging.debug(f"Creating symlink: {dst!s} -> {src!s}")
-        if dst.is_dir():
+        if dst.is_dir() or s.endswith('/'):
             src.mkdir(parents=True, exist_ok=True)
         else:
             src.parent.mkdir(parents=True, exist_ok=True)

@@ -463,6 +463,7 @@ def config_rest(config, args):
             'amppd.fileStorageRoot': (['rest', 'storage_path'], 'media', 'path_rel', ['amp', 'data_root']),
             'amppd.dropboxRoot': (['rest', 'dropbox_path'], 'dropbox', 'path_rel', ['amp', 'data_root']),
             'logging.path': (['rest', 'logging_path'], 'logs', 'path_rel', ['amp', 'data_root']),
+            'amppd.mediaprobeDir': (['rest', 'mediaprobe_dir'], 'MediaProbe', 'path_rel', ['amp', 'data_root']),
             # Avalon integration
             "avalon.url": (['rest', 'avalon_url'], 'https://avalon.example.edu'),
             "avalon.token": (['rest', 'avalon_token'], 'dummytoken'),
@@ -540,6 +541,7 @@ def config_rest(config, args):
         #  amppdui.documentRoot -- this should be somewhere in the tomcat tree.
         f.write(f"amppdui.documentRoot = {amp_root}/tomcat/webapps/ROOT\n")
         f.write(f"amppdui.symlinkDir = {amp_root}/{config['amp']['data_root']}/symlinks\n")
+                        
         f.write("# boilerplate properties\n")
         for k,v in config['rest']['properties'].items():
             if isinstance(v, bool):

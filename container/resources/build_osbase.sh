@@ -22,8 +22,8 @@ dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_6
 dnf -qy module disable postgresql
 dnf install -y postgresql12 postgresql12-server
 
-# Install ansible for container setup (from EPEL)
-dnf install -y ansible
+## Install ansible for container setup (from EPEL)
+#dnf install -y ansible
 
 # install pipenv for mediaprobe
 pip3 install pipenv

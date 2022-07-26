@@ -38,3 +38,5 @@ rm -v /srv/amp/packages/*
 cd /srv/amp/galaxy
 export GALAXY_ROOT=`pwd`
 sh scripts/common_startup.sh
+
+# force rebuild (20220726-1516)
