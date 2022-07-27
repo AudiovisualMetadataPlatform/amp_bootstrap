@@ -124,28 +124,23 @@ def action_init(config, args):
 
 def action_download(config, args):
     "download packages from URL directory"
-    logging.error("Unimplemented.")
-    exit(0)
 
     dest = Path(args.dest)
     if not dest.exists() or not dest.is_dir():
         logging.error("Destination directory doesn't exist or isn't a directory")
         exit(1)
-    
-    # open the page and look for any hrefs which are tars..
+
+    # there should be a manifest.txt in the file which contains the filenames
+    # of the packages in it, one per line.  Get that first.
     try:
-        with urllib.request.urlopen(args.url) as f:            
-            package_urls = []
-            page = f.read().decode('utf-8')
-            for m in re.finditer(r'href="(.+?)"', page):
-                file = m.group(1)
-                if file.endswith('.tar'):
-                    # probably a package
-                    print(m.group(1))
+        logging.info(f"Retrieving {args.url}/manifest.txt.")
+        with urllib.request.urlopen(args.url + "/manifest.txt") as f:            
+            for pkg in [str(x, encoding='utf8').strip() for x in f.readlines()]:
+                logging.info(f"Retrieving {args.url}/{pkg}")
+                urllib.request.urlretrieve(f"{args.url}/{pkg}", dest / pkg)
 
-
-    except Exception:
-        logging.exception("Some exception was thrown")
+    except Exception as e:
+        logging.exception(f"Something went wrong: {e}")
         exit(1)
 
 
