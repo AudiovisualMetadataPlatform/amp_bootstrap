@@ -16,21 +16,30 @@ import tarfile
 from datetime import datetime
 import zipfile
 import urllib
+import email.utils
+import platform
 import re
 
+
 amp_root = Path(sys.path[0]).parent
-config = None
+#config = None
 
 # We need to use one of the 9.x since 10.x changed the package names for the EE
 # stuff and it breaks code
 tomcat_download_url_base = "https://archive.apache.org/dist/tomcat/tomcat-9/"
-tomcat_download_version = "9.0.62"
+tomcat_download_version = "9.0.65"
 
 # mediaprobe repo
 mediaprobe_repo = "https://github.com/IUMDPI/MediaProbe.git"
 
-# TODO/Wishlist:
-#  * should there be a 'download' option to download the latest packages from our site?
+# development repos
+dev_repos = {
+    'amppd': 'https://github.com/AudiovisualMetadataPlatform/amppd.git',
+    'amppd-ui': 'https://github.com/AudiovisualMetadataPlatform/amppd-ui.git',
+    'amp_mgms': 'https://github.com/AudiovisualMetadataPlatform/amp_mgms.git',
+    'galaxy': 'https://github.com/AudiovisualMetadataPlatform/galaxy.git',
+}
+
 
 def main():    
     parser = argparse.ArgumentParser()
@@ -39,7 +48,7 @@ def main():
     subp = parser.add_subparsers(dest='action', help="Program action")
     subp.required = True
     p = subp.add_parser('init', help="Initialize the AMP installation")
-    p.add_argument("--force", default=False, action="store_true", help="Force a reinitialization of the environment")
+    p.add_argument("--force", default=False, action="store_true", help="Force a reinitialization of the environment")    
     p = subp.add_parser('download', help='Download AMP packages')
     p.add_argument('url', help="URL amp packages directory")
     p.add_argument('dest', help="Destination directory for packages")
@@ -50,44 +59,46 @@ def main():
     p = subp.add_parser('restart', help="Restart one or more services")
     p.add_argument("service", help="AMP service to restart, or 'all' for all services")
     p = subp.add_parser('configure', help="Configure AMP")
-    p = subp.add_parser('install', help="Install a service")
+    p = subp.add_parser('install', help="Install a package")
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
     p.add_argument("package", nargs="+", help="Package file(s) to install")    
 
-    
+    # Development stuff    
+    p = subp.add_parser('devel', help="Intialize the development environment")
+    subd = p.add_subparsers(dest='devaction', help="Development actions")
+    subd.required = True
+    p = subd.add_parser('init', help="Initialize the development environment")
+    p = subd.add_parser('build', help="Build packages")
+    p.add_argument("package", nargs='*', help="Packages to build (default all)")
+    p.add_argument("--dest", type=str, default=str(amp_root / 'packages'), 
+                   help=f"Alternate destination dir (default: {amp_root / 'packages'!s})")
+
+
     args = parser.parse_args()
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
-    load_config(args)
-
-    # call the appropriate action function
-    globals()["action_" + args.action](config, args)
-
-
-def load_config(args):
-    global config
-    if args.config is None:
-        for n in ('amp.yaml', 'amp.yaml.default'):
-            args.config = Path(sys.path[0], n)
-            if args.config.exists():
-                break
-        else:
-            logging.error("No default configuration file found.")
-            exit(1)
-    args.config = Path(args.config).resolve()
-    if not args.config.exists():
-        logging.error(f"Config file {args.config!s} doesn't exist")
-        exit(1)
+    
     try:
-        with open(args.config) as f:
-            config = yaml.safe_load(f)
+        config = load_config(args)
+
+        # call the appropriate action function
+        if args.action == 'devel':
+            globals()["devaction_" + args.devaction](config, args)
+        else:
+            globals()["action_" + args.action](config, args)
+        
+            
     except Exception as e:
-        logging.error(f"Cannot load config file {args.config!s}: {e}")
-        exit(1)
-    return config
+        logging.exception(f"Program exception {e}")
+
+
+###########################################
+# Normal Actions
+###########################################
 
 def action_init(config, args):
     "Create the directories needed for AMP to do it's thing"    
+    check_prereqs()
 
     if not (amp_root / "tomcat").exists():
         # Install a tomcat.  Specifically we're going with tomcat 9.0.60
@@ -111,6 +122,11 @@ def action_init(config, args):
 
     # mediaprobe needs to be checked out and setup in data/MediaProbe.
     if not (amp_root / "data/MediaProbe").exists():
+        # Mediaprobe needs ffmpeg so let's make sure it's installed.
+        if not shutil.which("ffmpeg"):
+            logging.error("AMP requires ffmpeg to be installed.  Aborting init")
+            exit(1)
+
         logging.info("Checking out mediaprobe repository")
         here = os.getcwd()
         os.chdir(amp_root / "data")
@@ -124,28 +140,32 @@ def action_init(config, args):
 
 def action_download(config, args):
     "download packages from URL directory"
-    logging.error("Unimplemented.")
-    exit(0)
 
     dest = Path(args.dest)
     if not dest.exists() or not dest.is_dir():
         logging.error("Destination directory doesn't exist or isn't a directory")
         exit(1)
-    
-    # open the page and look for any hrefs which are tars..
-    try:
-        with urllib.request.urlopen(args.url) as f:            
-            package_urls = []
-            page = f.read().decode('utf-8')
-            for m in re.finditer(r'href="(.+?)"', page):
-                file = m.group(1)
-                if file.endswith('.tar'):
-                    # probably a package
-                    print(m.group(1))
 
-
-    except Exception:
-        logging.exception("Some exception was thrown")
+    # there should be a manifest.txt in the file which contains the filenames
+    # of the packages in it, one per line.  Get that first.
+    try:        
+        logging.info(f"Retrieving {args.url}/manifest.txt")
+        with urllib.request.urlopen(args.url + "/manifest.txt") as f:            
+            for pkg in [str(x, encoding='utf8').strip() for x in f.readlines()]:                
+                dstpkg = dest / pkg                
+                if dstpkg.exists():
+                    # check to see if the one we have is the same or newer than
+                    # what's on the source.
+                    dstpkg_stat = dstpkg.stat()                                                            
+                    resp = urllib.request.urlopen(urllib.request.Request(f"{args.url}/{pkg}", method="HEAD"))                  
+                    newpkg_time = email.utils.parsedate_to_datetime(resp.headers.get('last-modified')).timestamp()                                        
+                    if newpkg_time <= dstpkg_stat.st_mtime:
+                        logging.info(f"Skipping {pkg} because the local copy is newer that remote copy  ({newpkg_time} <= {dstpkg_stat.st_mtime})")
+                        continue
+                logging.info(f"Retrieving {args.url}/{pkg}")
+                urllib.request.urlretrieve(f"{args.url}/{pkg}", dest / pkg)
+    except Exception as e:
+        logging.exception(f"Something went wrong: {e}")
         exit(1)
 
 
@@ -397,11 +417,7 @@ def config_ui(config, args):
             'VUE_APP_AMP_UNIT': config['ui']['unit'],
             'VUE_APP_USER_GUIDE': config['ui']['user_guide_url']}
             
-    # VUE_AMP_DOC keys
-    if 'user_guide' in config['ui']:
-        for k in config['ui']['user_guide']:
-            vars[f'VUE_AMP_DOC_{k}'] = config['ui']['user_guide'][k]
-    
+
     if config['amp'].get('use_https', False):
         vars['VUE_APP_AMP_URL'] = f"https://{config['amp']['host']}/rest"
         vars['VUE_APP_GALAXY_WORKFLOW_URL'] = f"https://{config['amp']['host']}/rest/galaxy/workflow/editor?id="
@@ -576,7 +592,227 @@ def action_stop(config, args):
 def action_restart(config, args):
     action_stop(config, args)
     action_start(config, args)
+
+###########################################
+# Development Actions
+###########################################
+def devaction_init(config, args):
+    "Configure the evironment for development"
+    # make sure the basic configuration is installed
+    action_init(config, args)
+    check_prereqs(True)
     
+    logging.info("Creating development envrionment")
+    if not (amp_root / "src_repos").exists():
+        (amp_root / "src_repos").mkdir()
+    here = os.getcwd()
+    os.chdir(amp_root / "src_repos")
+    for repo in dev_repos:
+        repodir = amp_root / f"src_repos/{repo}"
+        if not repodir.exists():
+            logging.info(f"Cloning {repo}")
+            try:
+                subprocess.run(['git', 'clone', '--recursive', dev_repos[repo]], check=True)
+            except Exception as e:
+                logging.error(f"Failed to clone {repo}: {e}")
+                exit(1)
+        else:
+            logging.info(f"{repo} is already cloned")
+    os.chdir(here)
+
+
+def devaction_build(config, args):
+    "Build the packages!"
+    if not args.package:
+        args.package = list(dev_repos.keys())
+
+    for pkg in args.package:
+        if pkg not in dev_repos:
+            logging.warning(f"Skipping {pkg} since it doesn't appear to be a valid repo")
+            continue
+        here = os.getcwd()
+        os.chdir(amp_root / f"src_repos/{pkg}")
+        logging.info(f"Building packages for {pkg}")
+        p = subprocess.run(['./amp_build.py', '--package', args.dest])
+        if p.returncode:
+            logging.error(f"Failed building package for repo {pkg}")
+            exit(1)
+        os.chdir(here)
+
+
+
+###########################################
+# Utilities
+###########################################
+def load_config(args):
+    "Load the configuration file"
+    # load the default config
+    try:
+        with open(sys.path[0] + "/amp.default") as f:
+            default_config = yaml.safe_load(f)
+    except Exception as e:
+        logging.error(f"Cannot load default config file: {sys.path[0]}/amp.default: {e}")
+        exit(1)
+
+    # find the overlay config...
+    if args.config is None:
+        for d in [Path(x) for x in (sys.path[0], '.', Path.home())]:
+            cfg_file = d / 'amp.yaml'
+            if cfg_file.exists():
+                logging.info(f"Using config file {cfg_file!s}")
+                args.config = cfg_file.resolve()
+                break
+        else:
+            logging.error(f"Unable to locate a user configuration file")
+            exit(1)
+    args.config = Path(args.config).resolve()
+    if not args.config.exists():
+        logging.error(f"Config file {args.config!s} doesn't exist")
+        exit(1)
+
+    try:
+        with open(args.config) as f:
+            overlay_config = yaml.safe_load(f)
+        if overlay_config is None or type(overlay_config) is not dict:
+            raise ValueError("YAML file is valid but is either empty or is not a dictionary")
+    except Exception as e:
+        logging.error(f"Cannot load config file {args.config!s}: {e}")
+        exit(1)
+
+    return _merge(default_config, overlay_config)
+
+
+def _merge(model, overlay, context=None):
+    "Merge two dicts"
+    if not context:
+        context = []
+        
+    def context_string():
+        return '.'.join(context)
+
+    #logging.debug(f"Merge context: {context_string()}")
+    for k in overlay:
+        if k not in model:
+            logging.warning(f"Adding un-modeled value: {context_string()}.{k} = {overlay[k]}")
+            model[k] = overlay[k]
+        elif type(overlay[k]) is not type(model[k]):
+            logging.warning(f"Skipping - type mismatch: {context_string()}.{k}:  model={type(model[k])}, overlay={type(overlay[k])}")
+        elif type(overlay[k]) is dict:   
+            nc = list(context)
+            nc.append(k)         
+            _merge(model[k], overlay[k], nc)
+        else:
+            # everything else is replaced wholesale
+            #logging.debug(f"Replacing value: {context_string()}.{k}:  {model[k]} -> {overlay[k]}")
+            model[k] = overlay[k]
+
+
+def check_prereqs(dev=False):
+    "Check the system prerequisites"
+    logging.info(f"Checking {'development' if dev else 'system'} prerequisites")
+    failed = False
+    # check our python version.  The version of galaxy we're running requires
+    # a python that's >= 3.6 and <= 3.9.  3.10 definitely breaks things.
+    # since we're running the in-path python, we can use our instance to 
+    # determine which python is installed.
+    if not (6 <= int(platform.python_version_tuple()[1]) <= 9):
+        logging.error(f"AMP requires python 3.6 - 3.9.  You're running {platform.python_version()}")
+        failed = True
+
+    # amppd requires JRE 11, although it might run on newer versions.  Let's 
+    # not take a chance and force it here.    
+    v = get_version('java', ['-version'], r'version "(\d+)\.(\d+)') 
+    if not v:
+        failed = True
+    else:    
+        if v != (11, 0):
+            logging.error(f"Found JRE version {v}, need (11, 0)")
+            failed = True
+
+    # Singularity 3.7 or greater
+    v = get_version('singularity', ['--version'], r'version (\d+)\.(\d+)')
+    if not v:
+        failed = True
+    else:
+        if v <= (3, 7):
+            logging.error(f"Found singularity version {v}, need 3.7 or greater")
+            failed = True
+
+    # just make sure ffmpeg is here
+    v = get_version('ffmpeg')
+    if not v:
+        failed = True
+
+    # and the same with file
+    v = get_version('file')
+    if not v:
+        failed = True
+
+    # Development tools
+    if dev:
+        # JDK
+        v = get_version('javac', ['--version'], r'javac (\d+)\.(\d+)')
+        if not v:
+            failed = True
+        else:    
+            if v != (11, 0):
+                logging.error(f"Found JDK version {v}, need (11, 0)")
+                failed = True       
+        
+        # Node.js 12 - 14
+        v = get_version('node', ['--version'], r'v(\d+)')
+        if not v:
+            failed = True
+        else:
+            if not ((12, ) <= v <= (14, )):
+                logging.error(f"Found node.js version {v}, need 12 or 14")
+                failed = True
+
+        # just make sure make is there somewhere
+        v = get_version('make')
+        if not v:
+            failed = True
+
+        # and lastly, check for docker and/or podman
+        dv = get_version('docker')
+        pv = get_version('podman')
+        if not (pv or dv):
+            logging.warning("Neither podman nor docker found.  You will not be able to build a containerized version")
+        else:
+            logging.info(f"Use {'podman' if pv else 'docker'} to build a container.")
+
+
+    if failed:
+        logging.error("Prerequistes have failed.  Install them and try again")
+        exit(1)
+
+
+def get_version(cmd, args=None, pattern=None):
+    logging.debug(f"Checking path for {cmd}")
+    if not shutil.which(cmd):
+        logging.error(f"Command {cmd} not in path")
+        return None
+    # if a pattern is not supplied, just make sure the binary is there
+    # and return a generic version number
+    if not pattern:
+        return (1, 0)
+
+    command = [cmd]
+    if args:
+        command.extend(args)
+    logging.debug(f"Version command: {command}")
+    p = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf8")
+    if p.returncode != 0:
+        logging.error(f"Command {command} failed with return code: {p.returncode}")
+        return None
+    m = re.search(pattern, p.stdout)
+    if not m:
+        logging.error(f"Command {command} didn't return version pattern matching: <<{pattern}>>")
+        return None
+    return tuple([int(x) for x in m.groups()])
+    
+
+
 
 if __name__ == "__main__":
     main()

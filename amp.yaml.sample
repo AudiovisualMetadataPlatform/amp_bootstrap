@@ -1,0 +1,86 @@
+---
+amp:
+    host: localhost
+    port: 8080
+    https: false
+    
+
+galaxy:    
+    # what interface galaxy should bind to.  This should be fairly 
+    # restricted.  If the parameter is missing then it will bind to all interfaces.
+    host: localhost
+    
+    # Authentication bits
+    admin_username: myuser@example.edu
+    admin_password: my admin password
+
+    # this should be a random string of 5-56 characters that is used to generate encoded
+    # ids between the galaxy instance and the client.  Because AMP stores various IDs as
+    # part of its operation, changing this value after the initial setup will make all of
+    # the data inaccessable.
+    id_secret: CHANGE ME
+
+
+ui:
+    # UI configuration.
+    unit: AMP Pilot Unit
+
+rest:
+    # PostgreSQL database configuration
+    db_host: localhost
+    db_name: ampdb
+    db_user: ampuser
+    db_pass: amppass
+
+    # AMP administrator user, set up on intial start.
+    # NOTE: password should be changed interactively after initial start
+    # NOTE: After initial setup, these values are ignored(?). 
+    admin_username: ampadmin
+    admin_password: amppass
+    admin_email: ampadmin@example.edu
+
+    # Avalon integration
+    avalon_url: https://avalon.example.edu
+    avalon_token: some-really-long-hex-string
+
+    # secrets
+    encryption_secret: encryption-secret-text
+    jwt_secret: jwt-secret-text
+
+mgms:
+    # Setup for MGMS
+    # Configuration for the individual MGMs, including things
+    # like cloud credentials, urls, defaults, etc.
+    aws_comprehend:
+        default_bucket: my-bucket
+        default_access_arn: arn:aws:iam::<some_number>:role/AwsComprehend
+
+    aws_transcribe:
+        default_bucket: my-bucket
+        default_directory: 
+
+    jira:
+        server: https://jira.example.edu
+        username: jira_username
+        password: jira_password
+        project: jira_project_key
+
+    azure:
+        accountId: azure_account_id
+        apiKey: azure_api_key
+        s3Bucket: my-bucket
+
+    aws:
+        aws_access_key_id: my_awsaccess_key
+        aws_secret_access_key: my_aws_secret_access
+        region_name: us-east-2
+
+    hmgm:        
+        auth_key: some random garbage
+        auth_string: auth    
+
+
+
+
+
+            
