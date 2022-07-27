@@ -135,8 +135,11 @@ All of the AMP system settings are in amp_bootstrap/amp.yaml.   If you change se
 ### Copy the default file to a working file
 ```
 cd amp_bootstrap
-cp amp.yaml.default amp.yaml
+cp amp.yaml.sample amp.yaml
 ```
+
+The values in the amp.yaml file will overlay what's in the amp.default file.  You should never have to modify amp.default.
+
 
 ### Modify the amp.yaml file
 You can download the file and edit it on your workstation/laptop and then upload it or you can edit it directly on the server using `nano amp.yaml`
@@ -230,24 +233,33 @@ The amp directory structure should look like this:
 
 # Managing AMP
 
-## Installing AMP packages
-Now that the environment has been initialized it's time to install the packages.  At this time there is not a
-public website where the packages can be retrieved, so contact the AMP developers for the latest build.
+## Downloading AMP packages
+The amp_control.py script can be used to download the "current" AMP packages:
+
+```
+./amp_control.py download https://dlib.indiana.edu/AMP-packages/current
+```
+
+It will only download packages that are newer than are in packages directory, or don't exist.  
+
 
 The current package list:
 ```
--rw-r-----. 1 bdwheele bdwheele 826M Jun 23 14:11 amp_galaxy-21.01.tar
--rw-r-----. 1 bdwheele bdwheele 1.6G Jun 23 14:12 amp_mgms-applause_detection-0.1.0.tar
--rw-rw-r--. 1 bdwheele bdwheele 1.2G Jun 23 14:12 amp_mgms-gentle-0.1.0.tar
--rw-rw-r--. 1 bdwheele bdwheele 1.7G Jun 23 14:12 amp_mgms-ina_speech_segmenter-0.1.0.tar
--rw-rw-r--. 1 bdwheele bdwheele 3.9G Jun 23 14:12 amp_mgms-kaldi-0.1.0.tar
--rw-rw-r--. 1 bdwheele bdwheele 1.4G Jun 23 14:12 amp_mgms-mgm_python-0.1.0.tar
--rw-rw-r--. 1 bdwheele bdwheele 430K Jun 23 14:12 amp_mgms-mgms-0.1.0.tar
--rw-r-----. 1 bdwheele bdwheele  67M Jun 23 14:12 amp_rest-0.0.1-SNAPSHOT.tar
--rw-r-----. 1 bdwheele bdwheele 4.5M Jun 23 14:12 amp_ui-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb  865536000 Jul 27 10:29 amp_galaxy-21.01.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb 1648650240 Jul 27 10:29 amp_mgms-applause_detection-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb      40960 Jul 27 10:29 amp_mgms-aws-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb      40960 Jul 27 10:29 amp_mgms-azure-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb 1185873920 Jul 27 10:30 amp_mgms-gentle-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb      40960 Jul 27 10:30 amp_mgms-hmgms-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb 1789521920 Jul 27 10:30 amp_mgms-ina_speech_segmenter-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb 4112844800 Jul 27 10:30 amp_mgms-kaldi-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb 1473904640 Jul 27 10:30 amp_mgms-mgm_python-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb     348160 Jul 27 10:30 amp_mgms-mgms-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb   69795840 Jul 27 10:30 amp_rest-0.0.1-SNAPSHOT.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb    4628480 Jul 27 10:30 amp_ui-0.1.0.tar
+-rw-rw-r--. 1 bdwheele app_dlpweb        322 Jul 26 15:44 manifest.txt
 ```
-
-Download the packages into the packages directory.
+## Installing the packages
 
 When installig AMP, the galaxy package has to be installed prior to any amp_mgms package.  Beyond that, there's no required order.
 
@@ -314,30 +326,106 @@ It is important to stop AMP before:
 
 
 # Developing AMP
-If you wish to modify/enhance AMP, you can use the package installation as a starting point:
 
-* Install AMP as described above
-* Create a src_repos directory in the AMP installation directory
-* Check out the AMP repositories you wish to modify:  amp_mgms, amppd, amp_ui, or galaxy.
-* Make code changes as desired
-* You can use these methods (and others) to see your changes:
-  * Use packaging
-    * Guaranteed to work, but can be cumbersome
-    * In the repository directory run `./amp_build.py --package ../../packages` to create a new package
-    * In the amp_bootstrap directory:
-      * Shut down AMP:  `./amp_control.py stop all`
-      * Install the new package: `./amp_control.py install ../packages/<name of the new package>`
-      * Reconfigure AMP: `./amp_control.py configure`
-      * Start AMP: `./amp_control.py start all`
-  * Directly update the AMP installation
-    * This may or may not work depending on what you're changing...will likely work for the UI and MGMs
-    * In the repository directory run `./amp_build.py` with a destination directory relevant for the repository
-    * Ta da!
-  * Point standalone code to the installation
-    * Start a new instance of whatever you're working on...such as the REST backend or Galaxy
-    * Modify the AMP configuration to use your new instance
-    * Shut down AMP 
-    * Configure AMP
-    * Restart AMP
-    * Now it should be using your code rather than the previously installed code.
-    
+amp_control.py can be used to set up a working installation from source that can be modified.
+
+## General setup
+
+Set up the development environment by checking for prerequisites and cloning the repositories:
+
+```
+./amp_control.py devel init
+```
+
+And build an initial set of packages
+
+```
+./amp_control.py devel build
+```
+
+This process takes a while the first time (more than an hour), but subsequent builds should be much faster.  If you need to rebuild a single repository
+you can do so:
+
+```
+./amp_control.py devel build amp_mgms
+```
+
+After the packages are built you can install them and use them like the distribution packages.
+
+
+## Developing specific components
+
+It is always possible to do the  
+
+edit -> build package -> shut down amp -> install package -> configure amp -> start amp
+
+cycle for development, but it can be cumbersome.  There are some shortcuts that
+can be used for different repositories.
+
+### galaxy
+
+The easiest way to do this is to make the running instance of galaxy the development repository.  
+
+* remove the galaxy directory that was installed via the packages
+* symlink galaxy -> src_repos/galaxy
+* install the amp_mgm* packages
+* reconfigure amp
+
+Now the galaxy code that is run is the stuff in the repo and you can modify it as needed.
+
+Remember that the content in tools/amp_mgms and the configuration files are from other sources
+so they shouldn't be modified from within this repository as they will be overwritten by other install/configure actions
+
+NOTE:  Our branch of galaxy will not build with python 3.10, which is the default for many current distributions.
+Install a previous version, place it at the head of the path, install the virtualenv package into that installation.
+Sometimes it will find a 3.10 install, which you can identify by a line like this at the start of a galaxy build:
+
+```
+created virtual environment CPython3.10.4.final.0-64 in 116ms
+```
+
+
+### amppd
+
+The amppd war file can be build and put into tomcat/webapps and it should automatically deploy.
+
+
+### amppd-ui
+
+The UI can be built directly where tomcat can see it, without the need to restart anything.  If a configuration change is needed
+you should be able to reconfigure amp without restarting it in this case.
+
+```
+./amp_build.py ../tomcat/webapps/ROOT
+```
+
+
+### amp_mgms
+
+Generally, it is possible to modify this repository and build it, specifying an 
+installation directory that is the running instance of galaxy:
+
+```
+./amp_build.py ../../galaxy
+```
+
+The only corner case is the first build of a new tool because that's effectively a configuration
+change (the list of tools in amp.default)
+
+Beyond that, changes should be effective as soon as the next workflow uses the tool
+
+### amp_bootstrap
+
+This repository can be edited in place and modified as needed.  Since it controls
+the rest of amp there are no dependencies.
+
+### Configuration Changes
+Any time a runtime configuration file is changed it's important to make sure that the amp_bootstrap repository is
+updated to handle those values.
+
+For simple non-user config changes, it's sufficient to just modify amp.default to include the new values.
+
+If it is a value that the user is expected to change, the value must also be included in amp.yaml.sample
+
+If the configuration change is complex, then it may be required to modify the code in amp_control.py to 
+generate the resulting configuration files correctly.

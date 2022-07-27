@@ -5,12 +5,14 @@ set -e
 umask 022
 
 # Download the packages
-cd /srv/amp/packages
-BASEURL=https://dlib.indiana.edu/AMP-packages/current
-for n in `curl $BASEURL/manifest.txt`; do
-    echo $n
-    curl -o $n $BASEURL/$n
-done
+if [ "x$AMP_MIRROR" != "x"]; then
+    BASEURL=$AMP_MIRROR
+else
+    BASEURL=https://dlib.indiana.edu/AMP-packages/current
+fi
+cd /srv/amp/amp_bootstrap
+./amp_control.py download $BASEURL /srv/amp/packages
+
 
 # Install the packages
 cd /srv/amp/amp_bootstrap
