@@ -51,7 +51,7 @@ def main():
     p.add_argument("--force", default=False, action="store_true", help="Force a reinitialization of the environment")    
     p = subp.add_parser('download', help='Download AMP packages')
     p.add_argument('url', help="URL amp packages directory")
-    p.add_argument('dest', help="Destination directory for packages")
+    p.add_argument('dest', default=str(amp_root / 'packages'), help=f"Destination directory for packages (default {amp_root / 'packages'})")
     p = subp.add_parser('start', help="Start one or more services")
     p.add_argument("service", help="AMP service to start, or 'all' for all services")
     p = subp.add_parser('stop', help="Stop one or more services")
@@ -747,6 +747,12 @@ def check_prereqs(dev=False):
     v = get_version('file')
     if not v:
         failed = True
+
+    # galaxy sometimes really, really wants gcc.  So let's make sure there's one there
+    v = get_version('gcc')
+    if not v:
+        failed = True
+
 
     # Development tools
     if dev:
