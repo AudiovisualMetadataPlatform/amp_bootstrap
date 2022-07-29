@@ -6,17 +6,32 @@ https://podman.io
 
 # Building the container image
 
-The Dockerfile should contain all that's needed for building the container image:
+The build.py script does all of the magic to start a container build
 
 ```
-docker build -t amp:test .
+usage: build.py [-h] [--mirror MIRROR] [--debug] [--docker DOCKER] [--tag TAG]
+
+options:
+  -h, --help       show this help message and exit
+  --mirror MIRROR  Source for AMP packages
+  --debug          Turn on debugging
+  --docker DOCKER  Docker command to use (default is to try podman then docker)
+  --tag TAG        Image tag
+```
+
+Generally you will not need to use any of the options, but if you have local packages
+that you wish to install (rather than using ones downloaded), you can specify them 
+using the mirror option:
+
+```
+./build.py --mirror=file:///home/bdwheele/work_projects/AMP-devel/packages/
 ```
 
 On a fast server, building the image takes 12 minutes to build and 30G of docker image storage.
 Your build times will differ due to memory/network/disk differences.
 
-The build pulls the current distribution packages from https://dlib.indiana.edu/AMP-packages which
-will transfer roughly 12G.
+When local packages are not specified, the build pulls the current distribution packages from 
+https://dlib.indiana.edu/AMP-packages which will transfer roughly 12G.
 
 The resulting image is ~14G:
 
@@ -25,6 +40,7 @@ REPOSITORY                    TAG         IMAGE ID      CREATED         SIZE
 localhost/amp                 test        63396dc6a857  46 seconds ago  13.6 GB
 docker.io/library/rockylinux  8           8cf70153e062  7 days ago      202 MB
 ```
+
 
 # Using the container
 The container provides 2 ports:
@@ -38,7 +54,7 @@ Start the container, mounting a data directory at /srv/amp-data.  The
 command will look something like this:
 
 ```
-docker run -v /srv/storage/amp-data:/srv/amp-data --rm  amp:test
+docker run -v /srv/storage/amp-data:/srv/amp-data --rm  --publish 8080:8080,8082:8082 amp:test
 ```
 
 NOTE: removing the container via --rm after exit is OK since AMP is configured

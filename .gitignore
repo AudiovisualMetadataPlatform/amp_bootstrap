@@ -1,6 +1,8 @@
 # any packages used for building the container
-container/packages/
+container/packages/*
 container/packages
+container/dynanic-resources/*
+container/dynamic-resources
 
 
 # any configuration

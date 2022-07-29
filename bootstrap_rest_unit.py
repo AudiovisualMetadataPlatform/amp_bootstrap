@@ -18,7 +18,7 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
-    config = amp_control.load_config(args)
+    config = amp_control.load_config(args.config)
 
     url_base = f"http://{config['amp']['host']}:{config['amp']['port']}"
     amp_user = config['rest']['admin_username']

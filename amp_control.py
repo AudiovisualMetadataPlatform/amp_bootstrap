@@ -78,8 +78,12 @@ def main():
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
     
-    try:
-        config = load_config(args.config)
+    try:        
+        if args.action in ('init', 'download', 'install'):
+            # these don't need a valid config
+            config = {}
+        else:
+            config = load_config(args.config)
 
         # call the appropriate action function
         if args.action == 'devel':
@@ -679,7 +683,8 @@ def load_config(config_file=None):
         logging.error(f"Cannot load config file {config_file!s}: {e}")
         exit(1)
 
-    return _merge(default_config, overlay_config)
+    _merge(default_config, overlay_config)
+    return default_config
 
 
 def _merge(model, overlay, context=None):
@@ -690,7 +695,7 @@ def _merge(model, overlay, context=None):
     def context_string():
         return '.'.join(context)
 
-    #logging.debug(f"Merge context: {context_string()}")
+    logging.debug(f"Merge context: {context_string()}")
     for k in overlay:
         if k not in model:
             logging.warning(f"Adding un-modeled value: {context_string()}.{k} = {overlay[k]}")
@@ -703,7 +708,7 @@ def _merge(model, overlay, context=None):
             _merge(model[k], overlay[k], nc)
         else:
             # everything else is replaced wholesale
-            #logging.debug(f"Replacing value: {context_string()}.{k}:  {model[k]} -> {overlay[k]}")
+            logging.debug(f"Replacing value: {context_string()}.{k}:  {model[k]} -> {overlay[k]}")
             model[k] = overlay[k]
 
 

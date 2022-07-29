@@ -12,16 +12,10 @@ import shutil
 import random
 import subprocess
 import time
-
+import amp_control
 
 AMP_ROOT=Path("/srv/amp")
 DATA_ROOT=Path("/srv/amp-data")
-
-# we need the load_config function from amp_control.py so let's see if we can
-# import it.
-sys.path.insert(AMP_ROOT + "/amp_bootstrap")
-import amp_control
-
 
 
 def main():
@@ -50,8 +44,7 @@ def main():
         #with open(DATA_ROOT / "amp.yaml") as f:
         #    config = yaml.safe_load(f)
 
-        config = amp_control.load_config(AMP_ROOT / "amp_bootstrap/amp.yaml")
-        print(config)
+        config = amp_control.load_config()
 
         # start OS daemons
         start_daemons(config)
@@ -208,14 +201,21 @@ def run_amp(config):
     if not (DATA_ROOT / ".default_unit").exists():
         logging.info("Creating the default unit")
         # let tomcat settle down so we can do this.
-        time.sleep(30)
-        try:
-            subprocess.run([AMP_ROOT / "amp_bootstrap/bootstrap_rest_unit.py"], check=True)
-            (DATA_ROOT / ".default_unit").touch()
-        except Exception:
+        tries = 10
+        while tries > 0:
+            tries -= 1
+            p = subprocess.run([AMP_ROOT / "amp_bootstrap/bootstrap_rest_unit.py"])
+            if p.returncode == 0:
+                logging.info("Default unit created")
+                (DATA_ROOT / ".default_unit").touch()
+                break
+            else:
+                time.sleep(10)
+        else:
             logging.error("Could not set up the default unit. Restart the container OR")
             logging.error(f"Connect to the container and run {AMP_ROOT}/amp_bootstrap/bootstrap_rest_unit.py manually")
             logging.error(f"and touch {DATA_ROOT}/.default_unit")
+
 
     # Everything should be up and running.  Wait for a service to die and then exit
     while(True):

@@ -10,7 +10,7 @@ set -e
 # that it's a bad idea later...
 
 # Create the AMP directory
-mkdir /srv/amp
+mkdir -p /srv/amp || /bin/true
 cd /srv/amp
 
 # Update the singularity path to bind /srv/amp when running
@@ -19,14 +19,10 @@ echo "bind path = /srv/amp" >> /etc/singularity/singularity.conf
 # No need to open the firewall
 
 # Install the bootstrap
-git clone https://github.com/AudiovisualMetadataPlatform/amp_bootstrap.git
+mkdir amp_bootstrap
+cd amp_bootstrap
+tar -xvf /tmp/amp_bootstrap.tar
 
 # Intialize the amp directory tree
-# We can do this because nothing in the initialization requires the configuration to be correct
-cd amp_bootstrap
-
-# DEBUGGING the current branch! (force 20220726-0928)
-#git checkout AMP-2057
-
 ./amp_control.py init
 
