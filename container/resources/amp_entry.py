@@ -13,8 +13,16 @@ import random
 import subprocess
 import time
 
+
 AMP_ROOT=Path("/srv/amp")
 DATA_ROOT=Path("/srv/amp-data")
+
+# we need the load_config function from amp_control.py so let's see if we can
+# import it.
+sys.path.insert(AMP_ROOT + "/amp_bootstrap")
+import amp_control
+
+
 
 def main():
     if not DATA_ROOT.exists():
@@ -39,8 +47,11 @@ def main():
 
         # load the configuration since other things are going to need it
         # and by loading it we can make sure it's a valid yaml file.
-        with open(DATA_ROOT / "amp.yaml") as f:
-            config = yaml.safe_load(f)
+        #with open(DATA_ROOT / "amp.yaml") as f:
+        #    config = yaml.safe_load(f)
+
+        config = amp_control.load_config(AMP_ROOT / "amp_bootstrap/amp.yaml")
+        print(config)
 
         # start OS daemons
         start_daemons(config)
@@ -74,7 +85,7 @@ def test_config():
 
     logging.info("Creating default configuration file")
     # since we don't have one, let's load the default, make it usable, and exit
-    with open(AMP_ROOT / "amp_bootstrap/amp.yaml.default") as f:
+    with open(AMP_ROOT / "amp_bootstrap/amp.yaml.sample") as f:
         default = yaml.safe_load(f)
 
     # update things which need to differ on each install

@@ -79,7 +79,7 @@ def main():
                         level=logging.DEBUG if args.debug else logging.INFO)
     
     try:
-        config = load_config(args)
+        config = load_config(args.config)
 
         # call the appropriate action function
         if args.action == 'devel':
@@ -644,7 +644,7 @@ def devaction_build(config, args):
 ###########################################
 # Utilities
 ###########################################
-def load_config(args):
+def load_config(config_file=None):
     "Load the configuration file"
     # load the default config
     try:
@@ -655,28 +655,28 @@ def load_config(args):
         exit(1)
 
     # find the overlay config...
-    if args.config is None:
+    if config_file is None:
         for d in [Path(x) for x in (sys.path[0], '.', Path.home())]:
             cfg_file = d / 'amp.yaml'
             if cfg_file.exists():
                 logging.info(f"Using config file {cfg_file!s}")
-                args.config = cfg_file.resolve()
+                config_file = cfg_file.resolve()
                 break
         else:
             logging.error(f"Unable to locate a user configuration file")
             exit(1)
-    args.config = Path(args.config).resolve()
-    if not args.config.exists():
-        logging.error(f"Config file {args.config!s} doesn't exist")
+    config_file = Path(config_file).resolve()
+    if not config_file.exists():
+        logging.error(f"Config file {config_file!s} doesn't exist")
         exit(1)
 
     try:
-        with open(args.config) as f:
+        with open(config_file) as f:
             overlay_config = yaml.safe_load(f)
         if overlay_config is None or type(overlay_config) is not dict:
             raise ValueError("YAML file is valid but is either empty or is not a dictionary")
     except Exception as e:
-        logging.error(f"Cannot load config file {args.config!s}: {e}")
+        logging.error(f"Cannot load config file {config_file!s}: {e}")
         exit(1)
 
     return _merge(default_config, overlay_config)
