@@ -27,17 +27,17 @@ using the mirror option:
 ./build.py --mirror=file:///home/bdwheele/work_projects/AMP-devel/packages/
 ```
 
-On a fast server, building the image takes 12 minutes to build and 30G of docker image storage.
+On a fast server, building the image takes 12 minutes to build and 150G of docker image storage.
 Your build times will differ due to memory/network/disk differences.
 
 When local packages are not specified, the build pulls the current distribution packages from 
 https://dlib.indiana.edu/AMP-packages which will transfer roughly 12G.
 
-The resulting image is ~14G:
+The resulting image is ~24G:
 
 ```
 REPOSITORY                    TAG         IMAGE ID      CREATED         SIZE
-localhost/amp                 test        63396dc6a857  46 seconds ago  13.6 GB
+localhost/amp                 test        63396dc6a857  46 seconds ago  23.9 GB
 docker.io/library/rockylinux  8           8cf70153e062  7 days ago      202 MB
 ```
 

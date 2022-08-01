@@ -76,7 +76,7 @@ def main():
 
 
     logging.info("Starting build")
-    subprocess.run([args.docker, 'build', '-t', args.tag, '--build-arg',f"AMP_MIRROR={args.mirror}", "."])
+    subprocess.run([args.docker, 'build', '--squash', '-t', args.tag, '--build-arg',f"AMP_MIRROR={args.mirror}", "."])
 
 
 
