@@ -46,6 +46,9 @@ def main():
             if file.is_file():
                 if file.name.startswith('.'):
                     continue
+                if file.name == "amp.yaml":
+                    # do not copy the local configuration
+                    continue
                 logging.debug(f"Adding {file!s} as {file.name}")
                 t.add(file, file.name)
 
