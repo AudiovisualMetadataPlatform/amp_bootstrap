@@ -85,10 +85,13 @@ def main():
         else:
             config = load_config(args.config)
 
+
         # call the appropriate action function
         if args.action == 'devel':
+            check_prereqs(True)
             globals()["devaction_" + args.devaction](config, args)
         else:
+            check_prereqs()
             globals()["action_" + args.action](config, args)
         
             
@@ -102,7 +105,6 @@ def main():
 
 def action_init(config, args):
     "Create the directories needed for AMP to do it's thing"    
-    check_prereqs()
 
     if not (amp_root / "tomcat").exists():
         # Install a tomcat.  Specifically we're going with tomcat 9.0.60
@@ -604,7 +606,6 @@ def devaction_init(config, args):
     "Configure the evironment for development"
     # make sure the basic configuration is installed
     action_init(config, args)
-    check_prereqs(True)
     
     logging.info("Creating development envrionment")
     if not (amp_root / "src_repos").exists():
@@ -643,6 +644,10 @@ def devaction_build(config, args):
             exit(1)
         os.chdir(here)
 
+    # create the manifest
+    with open(args.dest + "/manifest.txt", "w") as m:
+        for f in Path(args.dest).glob("*.tar"):
+            m.write(f.name + "\n")
 
 
 ###########################################
@@ -738,15 +743,25 @@ def check_prereqs(dev=False):
             logging.error(f"Found JRE version {v}, need (11, 0)")
             failed = True
 
-    # Singularity 3.7 or greater
-    v = get_version('singularity', ['--version'], r'version (\d+)\.(\d+)')
+    # Singularity 3.7 or greater (or apptainer 1.0 or newer)
+    v = get_version('apptainer', ['--version'], r'version (\d+)\.(\d+)')
     if not v:
-        failed = True
-    else:
-        if v <= (3, 7):
-            logging.error(f"Found singularity version {v}, need 3.7 or greater")
+        # ok, apptainer isn't installed, so look for singularity
+        v = get_version('singularity', ['--version'], r'version (\d+)\.(\d+)')
+        if not v:
+            logging.error("Neither apptainer nor singularity is available")
             failed = True
-
+        else:
+            if v <= (3, 7):
+                logging.error(f"Found singularity version {v}, need 3.7 or greater")
+                failed = True
+    else:
+        # if we have apptainer, we're good, but let's make sure the singularity
+        # symlink is there.
+        if not shutil.which('singularity'):
+            failed = True
+            logging.error("Apptainer is installed, but the singularity symlink isn't available")
+        
     # just make sure ffmpeg is here
     v = get_version('ffmpeg')
     if not v:
