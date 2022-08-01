@@ -79,7 +79,7 @@ def main():
                         level=logging.DEBUG if args.debug else logging.INFO)
     
     try:        
-        if args.action in ('init', 'download', 'install'):
+        if args.action in ('init', 'download', 'install', 'devel'):
             # these don't need a valid config
             config = {}
         else:
