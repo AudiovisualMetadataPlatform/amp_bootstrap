@@ -352,6 +352,24 @@ you can do so:
 
 After the packages are built you can install them and use them like the distribution packages.
 
+### Build Environment Requirements
+
+AMP requires specific versions of languages to build properly.  These versions may not be available
+by default on modern distributions.
+
+| Software    | Version   | Needed By | Fedora 36 | Ubuntu 22.04 | RHEL 8        | RHEL 9    |
+| ----------- | --------- | --------- | --------- | ------------ | ------------- | --------- |
+| Python      | 3.6 - 3.9 | galaxy    | 3.10      | 3.10         | 3.6           | 3.9       |
+| Java JDK    | 11        | amppd     | 8, 11, 17 | 11, 17, 18   | 8, 11, 17, 18 | 8, 11, 17 |
+| Node.js     | 14        | amppd-ui  | 16        | 12           | 10            | 16        |
+| Singularity | 3.7+      | mgms      | 3.8       | ?            | (epel)        | (epel)    |
+| Podman      | 3.0+      | container | yes       | yes          | yes           | yes       |
+|             |           |           |           |              |               |           |
+
+Singularity was renamed to Apptainer upstream, so Apptainer 1.0+ is compatible with singularity, 
+providing there's a symlink from singularity -> apptainer.
+
+Podman should be fully compatible with docker, so docker can be used if desired.
 
 ## Developing specific components
 
@@ -429,3 +447,27 @@ If it is a value that the user is expected to change, the value must also be inc
 
 If the configuration change is complex, then it may be required to modify the code in amp_control.py to 
 generate the resulting configuration files correctly.
+
+### Creating your own MGMs outside of the AMP environment
+
+Most of this is TBD, but the gist of it is:
+
+#### Create a repository for your MGM(s)
+
+You can copy the amp_mgms repository and then make a few changes
+
+* remove the bits you won't need:
+  * tools/* directories
+  * tests/*.yaml  test suites
+  * test/fixtures/* test fixtures
+* for each new tool create a new directory in tools for your new MGM including:
+  * mgm_build.sh to build your MGM
+  * mgm_version to indicate your tool version
+  * a galaxy-compatible xml tool file
+  * any scripts you'll need
+    * You can use mgm_python.sif as your python interpreter for most things with no dependencies
+    * or build a singularity container if there are tool-specific dependencies
+* build the package using amp_build.py
+* install the package like the standard amp packages
+* if your amp.yaml file overlay the galaxy.tools amp.default to include your MGM
+* enjoy
