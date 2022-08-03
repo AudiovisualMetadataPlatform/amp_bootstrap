@@ -56,20 +56,19 @@ galaxy:
         Audio Extraction:
             - amp_mgms/extract_audio.xml
             - amp_mgms/remove_trailing_silence.xml
-        Segmentation:
-            - amp_mgms/ina_speech_segmenter.xml
-            - amp_mgms/ina_speech_segmenter_hpc.xml
+        Audio Segmentation:
+            - amp_mgms/ina_speech_segmenter.xml.xml
             - amp_mgms/keep_speech.xml
             - amp_mgms/remove_silence_speech.xml
             - amp_mgms/adjust_transcript_timestamps.xml
             - amp_mgms/adjust_diarization_timestamps.xml
+        Applause Detection:
             - amp_mgms/applause_detection.xml
             - amp_mgms/applause_detection_to_avalon_xml.xml
         Speech to Text:
             - amp_mgms/aws_transcribe.xml
             - amp_mgms/gentle_forced_alignment.xml
             - amp_mgms/kaldi.xml
-            - amp_mgms/kaldi_hpc.xml
             - amp_mgms/transcript_to_webvtt.xml
             - amp_mgms/vocabulary_tagging.xml
         Named Entity Recognition:
@@ -78,8 +77,10 @@ galaxy:
             - amp_mgms/ner_to_csv.xml
         Video Indexing:
             - amp_mgms/azure_video_indexer.xml
-            - amp_mgms/contact_sheets.xml
-            - amp_mgms/contact_sheets_collection.xml
+            - amp_mgms/contact_sheet_frame.xml
+            - amp_mgms/contact_sheet_face.xml
+            - amp_mgms/contact_sheet_shot.xml
+            - amp_mgms/contact_sheet_vocr.xm
         Shot Detection:
             - amp_mgms/pyscenedetect.xml
             - amp_mgms/azure_shot_detection.xml
