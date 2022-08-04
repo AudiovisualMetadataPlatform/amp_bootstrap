@@ -2,7 +2,7 @@
 set -e
 
 echo "Installing git"
-dnf install -y git
+sudo dnf install -y git
 
 echo "Cloning the AMP bootstrap repository"
 git clone https://github.com/AudiovisualMetadataPlatform/amp_bootstrap.git
