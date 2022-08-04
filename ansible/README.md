@@ -57,6 +57,14 @@ Log into the VM as the amp user and run this command to start bootstrapping the 
 curl https://raw.githubusercontent.com/AudiovisualMetadataPlatform/amp_bootstrap/main/ansible/vm_bootstrap.sh | /bin/bash
 ```
 
+The command will:
+* install git
+* clone the amp_bootstrap repository from github (this repository)
+* run the ansible/ansible_bootstrap.sh script
+  * installs the EPEL repository and 
+
+
+
 Everything below here needs to be rewritten.
 ----
 
