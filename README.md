@@ -237,7 +237,7 @@ The amp directory structure should look like this:
 The amp_control.py script can be used to download the "current" AMP packages:
 
 ```
-./amp_control.py download https://dlib.indiana.edu/AMP-packages/current
+./amp_control.py download https://dlib.indiana.edu/AMP-packages/current ../packages
 ```
 
 It will only download packages that are newer than are in packages directory, or don't exist.  
@@ -264,7 +264,7 @@ The current package list:
 When installig AMP, the galaxy package has to be installed prior to any amp_mgms package.  Beyond that, there's no required order.
 
 ```
-./amp_control.py install ../packages/amp-galaxy-21.01.tar
+./amp_control.py install ../packages/amp_galaxy-21.01.tar
 ./amp_control.py install --yes ../packages/amp_[mru]*.tar
 ```
 
