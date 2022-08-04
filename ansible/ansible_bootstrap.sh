@@ -1,8 +1,11 @@
 #!/bin/bash
 set -e
 
+# Install EPEL
+sudo dnf install -y epel-release
+
 # make sure ansible is installed
-dnf install -y ansible ansible-collection-ansible-posix 
+sudo dnf install -y ansible ansible-collection-ansible-posix 
 
 # create passwords that we'll need later
 if [ ! -e settings.yml ]; then

@@ -13,26 +13,16 @@
       name: "*"
       state: latest
 
+  - name: Enable powertools repository
+    shell: dnf config-manager --set-enabled powertools
+
   - name: Base dependencies
     yum:
       name:
         - java-11-openjdk
         - "@Development Tools"
         - dnf-plugins-core
-      state: present
-
-  - name: Enable powertools repository
-    shell: dnf config-manager --set-enabled powertools
-
-  - name: Install EPEL
-    yum:
-      name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-      disable_gpg_check: true
-      state: present
-
-  - name: Install Singularity
-    yum:
-      name: singularity
+        - singularity
       state: present
 
   - name: Install the RPM Fusion Repositories
@@ -66,7 +56,7 @@
 
   - name: Check for database directory
     stat:
-      path: /var/lib/pgsql/12
+      path: /var/lib/pgsql/12/data/pg_hba.conf
     register: pgsql_datadir
 
   # To re-initialize the database server, just
