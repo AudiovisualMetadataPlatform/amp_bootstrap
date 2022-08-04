@@ -1,0 +1,127 @@
+---
+- name: Install AMP and prereqs
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Loading variables
+    include_vars:
+      name: settings
+      file: settings.yml
+
+  - name: Update Packages
+    yum:
+      name: "*"
+      state: latest
+
+  - name: Base dependencies
+    yum:
+      name:
+        - java-11-openjdk
+        - "@Development Tools"
+        - dnf-plugins-core
+      state: present
+
+  - name: Enable powertools repository
+    shell: dnf config-manager --set-enabled powertools
+
+  - name: Install EPEL
+    yum:
+      name: https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+      disable_gpg_check: true
+      state: present
+
+  - name: Install Singularity
+    yum:
+      name: singularity
+      state: present
+
+  - name: Install the RPM Fusion Repositories
+    yum:
+      name: 
+        - https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+        - https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm
+      disable_gpg_check: true
+      state: present
+
+  - name: Install FFMPEG
+    yum:
+      name: ffmpeg
+      state: present
+
+  - name: Disable system postgres
+    shell: dnf -qy module disable postgresql
+
+  - name: Install Postgres REPO
+    yum:
+      name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+      state: present
+      disable_gpg_check: true
+
+  - name: Install Postgres 12
+    yum:
+      name: 
+        - postgresql12
+        - postgresql12-server
+      state: present
+
+  - name: Check for database directory
+    stat:
+      path: /var/lib/pgsql/12
+    register: pgsql_datadir
+
+  # To re-initialize the database server, just
+  # remove the /var/lib/pgsql/12 directory
+  - name: Database initialization
+    when: not pgsql_datadir.stat.exists
+    block:
+      - name: Initialize database
+        shell: postgresql-12-setup initdb
+      
+      - name: Write new hba configuration file
+        copy:
+          dest: /var/lib/pgsql/12/data/pg_hba.conf
+          content: |
+            # type db   user      addr           method
+            local  all  postgres                 peer
+            host   all  all       127.0.0.1/32   md5
+            host   all  all       ::1/128        md5
+      
+  - name: Start postgres server
+    systemd:
+      name: postgresql-12
+      enabled: true
+      state: started
+
+  - name: Create a AMP db and user
+    when: not pgsql_datadir.stat.exists
+    block:
+      - name: Create the AMP DB user
+        shell: psql -c "CREATE USER amp WITH PASSWORD '{{ settings.amp_db_password }}';"
+        become: yes
+        become_user: postgres
+
+      - name: Create the AMP database
+        shell: createdb --owner=amp amp
+        become: yes
+        become_user: postgres
+
+  - name: Create the AMP user
+    user:
+      comment: The AMP User
+      create_home: yes
+      generate_ssh_key: yes
+      name: amp
+      password: "{{ settings.amp_user_password | password_hash('sha512') }}"
+      state: present
+
+  - name: Open the firewall for AMP, Galaxy, and Postgres
+    firewalld:
+      port: "{{ item }}/tcp"
+      state: enabled
+      zone: public
+      permanent: yes
+      immediate: yes
+    with_items:
+      - 8080
+      - 8082
+      - 5432
