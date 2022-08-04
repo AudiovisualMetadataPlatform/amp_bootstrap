@@ -105,15 +105,6 @@
         become: yes
         become_user: postgres
 
-  - name: Create the AMP user
-    user:
-      comment: The AMP User
-      create_home: yes
-      generate_ssh_key: yes
-      name: amp
-      password: "{{ settings.amp_user_password | password_hash('sha512') }}"
-      state: present
-
   - name: Open the firewall for AMP, Galaxy, and Postgres
     firewalld:
       port: "{{ item }}/tcp"
