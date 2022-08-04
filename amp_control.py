@@ -744,7 +744,7 @@ def check_prereqs(dev=False):
             failed = True
 
     # Singularity 3.7 or greater (or apptainer 1.0 or newer)
-    v = get_version('apptainer', ['--version'], r'version (\d+)\.(\d+)')
+    v = get_version('apptainer', ['--version'], r'version (\d+)\.(\d+)', exists_warning=True)
     if not v:
         # ok, apptainer isn't installed, so look for singularity
         v = get_version('singularity', ['--version'], r'version (\d+)\.(\d+)')
@@ -817,10 +817,10 @@ def check_prereqs(dev=False):
         exit(1)
 
 
-def get_version(cmd, args=None, pattern=None):
+def get_version(cmd, args=None, pattern=None, exists_warning=False):
     logging.debug(f"Checking path for {cmd}")
     if not shutil.which(cmd):
-        logging.error(f"Command {cmd} not in path")
+        logging.log(logging.WARNING if exists_warning else logging.ERROR, f"Command {cmd} not in path")
         return None
     # if a pattern is not supplied, just make sure the binary is there
     # and return a generic version number
