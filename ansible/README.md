@@ -119,6 +119,7 @@ Setting up this environment would consist of:
     * `sudo dnf groupinstall -y Workstation`
     * `sudo systemctl set-default graphical`
     * `sudo shutdown -r now`
+    * When logging in the first time, select the gear next to the "Sign In" button before entering the password, and select "Classic (Wayland display server)" for a more traditional desktop experience.
 * Installing the developer's preferred IDE (commands vary)
 * Configuring git on the VM
   * user.name and user.email
