@@ -68,6 +68,13 @@ The command above will start the vm_bootstrap.sh script which will:
 
 At that point, the user should reboot the VM to fully apply all of the changes. 
 
+### Known issues:
+* rarely the script will segfault during "Update Packages".  This is likely due to a network error upstream.  You can safely retry
+the setup by:
+```
+cd amp_bootstrap/ansible
+./ansible_bootstrap.sh
+```
 
 # Using the VM
 
