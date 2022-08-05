@@ -109,7 +109,11 @@ In this scenario, the VM is a virtual workstation where the development environm
 The developer logs into the VM's GUI as the amp user and builds/modifies/installs AMP code using the VM's console.  
 
 Setting up this environment would consist of:
-* Installing the workstation software: `sudo dnf groupinstall Workstation`
+* Installing the workstation software: 
+    * `sudo dnf groupinstall -y Workstation`
+    * `sudo systemctl set-default graphical`
+    * `sudo shutdown -r now`
+    * When logging in the first time, select the gear next to the "Sign In" button before entering the password, and select "Classic (Wayland display server)" for a more traditional desktop experience.
 * Installing the developer's preferred IDE (commands vary)
 * Configuring git on the VM
   * user.name and user.email
