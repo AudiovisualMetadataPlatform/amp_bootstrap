@@ -36,7 +36,7 @@ def main():
 
     # write out the new configuration file
     with open(new_config, "w") as f:
-        yaml.safe_dump(config, f)
+        yaml.safe_dump(config, f, default_flow_style=False)
 
     print("New configuration generated.")
 

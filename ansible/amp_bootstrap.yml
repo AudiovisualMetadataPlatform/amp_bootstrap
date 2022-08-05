@@ -87,7 +87,15 @@
             local  all  postgres                 peer
             host   all  all       127.0.0.1/32   md5
             host   all  all       ::1/128        md5
+            host   all  all       0.0.0.0/0      md5
+            host   all  all       ::/0           md5
       
+      - name: Postgres listen on all addresses
+        lineinfile:
+          path: /var/lib/pgsql/12/data/postgresql.conf
+          regex: ^listen_addresses =
+          value: listen_addresses = '*'
+
   - name: Start postgres server
     systemd:
       name: postgresql-12
