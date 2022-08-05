@@ -4,6 +4,8 @@ container/packages
 container/dynanic-resources/*
 container/dynamic-resources
 
+# ansible settings
+ansible/settings.yml
 
 # any configuration
 amp.yaml

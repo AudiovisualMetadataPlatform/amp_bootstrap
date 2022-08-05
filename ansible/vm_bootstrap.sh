@@ -11,4 +11,3 @@ echo "Starting the Ansible bootstrap"
 cd amp_bootstrap/ansible
 ./ansible_bootstrap.sh
 
-echo "Set up should be complete.  Should be."
