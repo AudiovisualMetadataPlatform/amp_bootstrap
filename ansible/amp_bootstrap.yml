@@ -20,9 +20,13 @@
     yum:
       name:
         - java-11-openjdk
+        - java-11-openjdk-devel
         - "@Development Tools"
         - dnf-plugins-core
         - singularity
+        - podman
+        - maven
+
       state: present
 
   - name: Install the RPM Fusion Repositories
@@ -38,10 +42,18 @@
       name: ffmpeg
       state: present
 
+  - name: Setup Node 14 repository
+    shell: curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+
+  - name: Install Node 14 package
+    yum:
+      name: nodejs
+      state: present
+
   - name: Disable system postgres
     shell: dnf -qy module disable postgresql
 
-  - name: Install Postgres REPO
+  - name: Install Postgres Repository
     yum:
       name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
       state: present
@@ -106,3 +118,18 @@
       - 8080
       - 8082
       - 5432
+
+  - name: Set Java 11 to be the default java
+    shell: alternatives --set {{ item }} $(alternatives --display {{ item }} | grep 'family java-11-openjdk' | cut -d' ' -f1 )
+    with_items:
+      - java
+      - javac
+
+  - name: Set JAVA_HOME in the system profile       
+    copy:
+      dest: /etc/profile.d/java-11.sh
+      content: |
+        # Set JAVA_HOME to JDK 11
+        export JAVA_HOME=/usr/lib/jvm/java-11
+
+

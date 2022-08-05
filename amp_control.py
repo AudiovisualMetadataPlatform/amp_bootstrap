@@ -804,8 +804,8 @@ def check_prereqs(dev=False):
             failed = True
 
         # and lastly, check for docker and/or podman
-        dv = get_version('docker')
-        pv = get_version('podman')
+        dv = get_version('docker', exists_warning=True)
+        pv = get_version('podman', exists_warning=True)
         if not (pv or dv):
             logging.warning("Neither podman nor docker found.  You will not be able to build a containerized version")
         else:

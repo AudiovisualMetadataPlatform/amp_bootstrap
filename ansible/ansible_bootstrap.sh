@@ -17,4 +17,22 @@ fi
 # do all of the ansible stuff
 sudo ansible-playbook amp_bootstrap.yml -i inventory.yml "$@"
 
-# set up the AMP stuff
+# create a usable default configuration file
+./gen_default_config.py
+
+
+echo "
+The system should be properly configured for AMP:
+    * All prerequisites for building and running AMP are installed
+    * An AMP PostgreSQL user and database have been created
+    * A default amp configuration file has been generated
+    * The firewall has been opened for these ports:
+      * 8080 - The main AMP port
+      * 8082 - Galaxy
+      * 5432 - PostgreSQL
+
+Next steps:
+    * Reboot the system to finalize the updates
+    * Check the generated amp.yaml file and modify it as needed
+"
+
