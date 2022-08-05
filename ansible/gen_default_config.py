@@ -24,7 +24,7 @@ def main():
     config['galaxy']['admin_username'] = 'ampuser@example.edu'
     config['galaxy']['admin_password'] = gen_garbage(12)
     config['galaxy']['id_secret'] = gen_garbage(25)
-    config['galaxy'].pop('host')  # bind to all interfaces
+    config['galaxy']['host'] = None  # bind to all interfaces
     config['mgms']['hmgm']['auth_key'] = gen_garbage(32)
     config['rest']['admin_password'] = gen_garbage(12)
     config['rest']['encryption_secret'] = gen_garbage(14)

@@ -13,9 +13,9 @@ You'll probably want at least these specs:
 * 8GB RAM
 * 2 CPU
 * Disk:
-  * xGB for operating system and AMP software
+  * 20GB for operating system and AMP software
   * xGB for data files
-  * xGB for development (at least 150G for container dev)
+  * 30GB for development (at least 150G for container dev)
 
 ### Base operating system install
 
@@ -68,13 +68,7 @@ The command above will start the vm_bootstrap.sh script which will:
 
 At that point, the user should reboot the VM to fully apply all of the changes. 
 
-### Known issues:
-* rarely the script will segfault during "Update Packages".  This is likely due to a network error upstream.  You can safely retry
-the setup by:
-```
-cd amp_bootstrap/ansible
-./ansible_bootstrap.sh
-```
+
 
 # Using the VM
 
@@ -141,3 +135,23 @@ Generally, the setup would be something like this:
   * Galaxy:  http://localhost:8082
 * use a postgres client to connect to postgres on localhost port 8032
 * use a local IDE that either pushes code to the VM via ssh or interacts over ssh directly (Visual Studio Code Remote Explorer will do this)
+
+# Known issues:
+
+## Segfault during "Update Packages"
+Rarely the ansible_boostrap.yml playbook will segfault during "Update Packages".  The only explanation I've been able to come up with is a
+network issue upstream.  You can safely retry the setup by:
+```
+cd amp_bootstrap/ansible
+./ansible_bootstrap.sh
+```
+
+## The gentle MGM won't build because OpenBLAS can't determine the CPU type
+
+Some Hypervisors will produce a set of CPU Flags and/or ID strings which doesn't match a real
+CPU (I'm looking at you, QEMU/KVM!) so OpenBLAS fails to build which breaks the gentle MGM build.
+
+The easiest solution is to pass through the host system's CPU flags to the guest  (such as `-cpu host` flag on QEMU)
+so OpenBLAS gets a sane CPU configuration
+
+
