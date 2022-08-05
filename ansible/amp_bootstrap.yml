@@ -141,4 +141,9 @@
         # Set JAVA_HOME to JDK 11
         export JAVA_HOME=/usr/lib/jvm/java-11
 
-
+  - name: Start Postfix
+    systemd:
+      name: postfix
+      enabled: true
+      state: started
+      
