@@ -26,6 +26,7 @@
         - singularity
         - podman
         - maven
+        - postfix
 
       state: present
 
