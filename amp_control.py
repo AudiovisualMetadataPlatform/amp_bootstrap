@@ -247,6 +247,9 @@ def action_install(config, args):
                 logging.info("Deploying war file")
                 warfile = amp_root / f'tomcat/webapps/{servlets[pkgmeta["name"]]}'
                 deployroot = amp_root / f'tomcat/webapps/{Path(servlets[pkgmeta["name"]]).stem}'
+                # remove everything in the deploy root
+                if deployroot.exists():
+                    shutil.rmtree(deployroot)
                 with zipfile.ZipFile(warfile, 'r') as zfile:
                     zfile.extractall(deployroot)
                 warfile.unlink()
