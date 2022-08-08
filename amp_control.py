@@ -458,10 +458,12 @@ def config_rest(config, args):
                 for l in i.readlines():
                     if 'spring.config.location' in l:
                         pass
+                    elif l == '':
+                        pass
                     else:
                         o.write(l)
-                    o.write('\n')
-                o.write(f'JAVA_OPTS="$JAVA_OPTS -Dspring.config.location={amp_root / "data/config/application.properties"!s}"')
+                        o.write('\n')
+                o.write(f'JAVA_OPTS="$JAVA_OPTS -Dspring.config.location={amp_root / "data/config/application.properties"!s}"\n')
 
     # create the configuration file, based on config data...
     with open(amp_root / "data/config/application.properties", "w") as f:
