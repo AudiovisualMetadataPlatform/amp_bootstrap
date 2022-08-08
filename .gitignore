@@ -4,6 +4,13 @@ container/packages
 container/dynanic-resources/*
 container/dynamic-resources
 
+# ansible settings
+ansible/settings.yml
+
+# misc runtime things
+typescript
+typescript.time
+nohup.out
 
 # any configuration
 amp.yaml

@@ -89,6 +89,7 @@ def test_config():
     default['mgms']['hmgm']['auth_key'] = gen_garbage(32)
     default['rest']['admin_password'] = gen_garbage(12)
     default['rest']['jwt_secret'] = gen_garbage(15)
+    default['rest']['encryption_secret'] = gen_garbage(14)
     default['rest']['db_pass'] = gen_garbage(32)
 
     with open(DATA_ROOT / "amp.yaml", "w") as f:
