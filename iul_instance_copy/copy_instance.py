@@ -1,11 +1,13 @@
 #!/bin/env python3.9
 
 import argparse
+import configparser
 import logging
 from pathlib import Path
 import shutil
 import subprocess
 import yaml
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -66,6 +68,7 @@ def migrate_ui(amp_config: dict, ui_dir: Path, managed_dir: Path):
             if not symlink.exists() and not symlink.is_symlink():
                 (symdir / s.name).symlink_to(filename)
             logging.debug(f"{symdir / s.name} -> {filename} ")
+
 
 
 def migrate_rest(amp_config: dict, rest_dir: Path, managed_dir: Path):
@@ -150,7 +153,10 @@ def migrate_galaxy(amp_config: dict, galaxy_dir: Path, managed_dir: Path):
         amp_config['galaxy']['admin_password'] = "use previous install's password"
     
     # get the configuration values for the MGMs.
-
+    # where are they?  Looks like tools/amp_mgms/amp_mgm.ini
+    cparser = configparser.ConfigParser(interpolation=None)
+    cparser.read(galaxy_dir / "galaxy/tools/amp_mgms/amp_mgm.ini")
+    amp_config['mgms'] = {s: dict(cparser.items(s)) for s in cparser.sections()}
 
 
 
