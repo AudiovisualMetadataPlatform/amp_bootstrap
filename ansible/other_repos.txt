@@ -1,0 +1,41 @@
+These are things we'll need to look out for when installing to something that
+isn't RockyLinux 8 on x86_64.  
+
+* rhel9 got rid of the powertools repository
+
+That shouldn't be a big deal to update.  It's mostly there because EPEL 
+requires it for some packages.  Maybe it's not required for EPEL9?
+
+* postgres repositories are broken with the GPG keys and then it breaks all 
+  of the rest of the repos, so ansible script crashes
+
+Postgres' repos tend to break the gpg key and then break all things dnf.  It's 
+unfortunate.  We have a dependency on version 12 and RHEL 8 ships with 10.
+Not sure if that's a hard dependency or not.  Maybe we should revisit that.
+Also, not sure why it would fail on a /clean/ install.  
+
+* amppd-ui doesn't build because node-sass wants a "python" command to build 
+  and that's not installed on the system.
+
+This case was from RL8 on aarch64.  Apparently prebuilt libraries didn't exist
+for aarch64 Linux so node-sass tried to build them...and failed looking for
+the python command (which isn't installed because it used to refer to 
+Python 2.7 which has been out of service for years)
+
+* the gentle mgm won't build
+
+The default singularity script won't work because it defines the haswell 
+architecture for openblas, and that's not an ARM thing.  It also wants to
+install the nvidia-cuda-dev package, which doesn't make sense on ARM.  
+
+
+
+
+good things
+---
+* java 11, node 14 are there and work
+* amppd repo builds on RL8 on aarch64
+* singularity builds /do/ grab the correct architecture from dockerhub
+* visual studio code will work with a remote aarch64 machine (specifically, a raspberry pi)
+* mgm_python.sif builds and works when I tested it.
+* gentle will not build because it wants cuda
