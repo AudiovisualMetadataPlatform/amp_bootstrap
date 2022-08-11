@@ -27,6 +27,7 @@
         - podman
         - maven
         - postfix
+        - python3-yaml
 
       state: present
 

@@ -1,0 +1,8 @@
+---
+- name: Dump the facts about localhost
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Show facts
+    ansible.builtin.debug:
+      var: ansible_facts
