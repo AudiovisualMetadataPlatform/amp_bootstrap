@@ -26,20 +26,26 @@ Download the Rocky Linux 8 Minimal ISO from https://rockylinux.org/download
 (at the time of this writing it is RockyLinux-8.6-x86_64-minimal.iso)
 
 Boot the ISO and Install Rocky Linux with these options:
-* Partitioning:
-  * Default partitioning 
-  * AMP will be installed in /home/amp
-* Set your timezone
-* Software Selection:
-  * Server
-* Network
+* Installation Destination:
+  * Accept the default partitioning by just pressing "Done"
+  * AMP will be installed in /home/amp if you wish to modify the configuration
+* Network & Hostname
   * Connect the network device
-* User settings
-  * set the root password to something secure
-  * create the amp user
-    * use "amp" as the username
-    * select "Make this user administrator"
-    * select a reasonable password
+* Time & Date
+  * Set the time zone
+  * Enable Network Time
+* Software Selection:
+  * Server is the default, you shouldn't need to change it.
+* Root password
+  * set this to something secure
+* User Creation
+  * Full name = AMP
+  * User name = amp
+  * Make this user administrator
+  * Set the password to something strong
+
+
+
 
 ## AMP environment setup
 
