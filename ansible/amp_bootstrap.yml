@@ -28,6 +28,7 @@
         - maven
         - postfix
         - python3-yaml
+        - wget
 
       state: present
 
