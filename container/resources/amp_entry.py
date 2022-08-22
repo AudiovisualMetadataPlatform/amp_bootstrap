@@ -116,7 +116,8 @@ def start_postgres(config):
         logging.info("Initializing postgresql directories")
         for cmd in (f'mkdir {DATA_ROOT}/postgres',
                     f'chown postgres {DATA_ROOT}/postgres',
-                    f'runuser --user postgres /usr/pgsql-12/bin/initdb {DATA_ROOT}/postgres'):
+                    # was /usr/pgsql-12/bin/initdb
+                    f'runuser --user postgres /usr/bin/initdb {DATA_ROOT}/postgres'):
             logging.debug(f"Running: {cmd}")
             subprocess.run(cmd, shell=True, check=True)
         
@@ -129,7 +130,8 @@ host   all  all       ::1/128        md5
 """)
 
     logging.info("Starting postgres")
-    subprocess.run(f"runuser --user postgres -- /usr/pgsql-12/bin/pg_ctl -D {DATA_ROOT}/postgres -l {DATA_ROOT}/postgres/logfile start",
+    # was /usr/pgsql-12/bin/pg_ctl
+    subprocess.run(f"runuser --user postgres -- /usr/bin/pg_ctl -D {DATA_ROOT}/postgres -l {DATA_ROOT}/postgres/logfile start",
                    shell=True, check=True)
 
     logging.info("Creating schema & user (if necessary)")
@@ -137,7 +139,8 @@ host   all  all       ::1/128        md5
         f.write(f"create database {config['rest']['db_name']};\n")
         f.write(f"create user {config['rest']['db_user']} with password '{config['rest']['db_pass']}';\n")
         f.write(f"alter database {config['rest']['db_name']} owner to {config['rest']['db_user']};\n")
-    subprocess.run(f"runuser --user postgres /usr/pgsql-12/bin/psql < {DATA_ROOT}/db.sql",
+    # was /usr/pgsql-12/bin/psql
+    subprocess.run(f"runuser --user postgres /usr/bin/psql < {DATA_ROOT}/db.sql",
                    shell=True, check=True)
     (DATA_ROOT / "db.sql").unlink()
 

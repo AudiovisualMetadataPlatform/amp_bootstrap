@@ -17,10 +17,15 @@ dnf install -y ffmpeg
 dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 dnf install -y singularity
 
-# PostgreSQL 12 from upstream
-dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-dnf -qy module disable postgresql
-dnf install -y postgresql12 postgresql12-server
+## PostgreSQL 12 from upstream
+#dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+#dnf -qy module disable postgresql
+#dnf install -y postgresql12 postgresql12-server
+
+## PostgreSQL 12 from modules
+dnf install -y @postgresql:12
+
+
 
 ## Install ansible for container setup (from EPEL)
 #dnf install -y ansible
