@@ -14,12 +14,13 @@
       state: latest
 
   - name: Install GUI workstation
-    when: "{{ lookup('env', 'GUI_WORKSTATION') != '' }}"
+    when: use_gui
     block:
       - name: GUI Packages
         yum:
           state: latest
           name:
+            - "@Workstation"
             - "@GNOME Desktop Environment"
             - firefox
       - name: Set boot-to-gui
