@@ -21,7 +21,6 @@
           state: latest
           name:
             - "@Workstation"
-            - "@GNOME Desktop Environment"
             - firefox
       - name: Set boot-to-gui
         command: systemctl set-default graphical.target
