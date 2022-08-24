@@ -13,9 +13,21 @@
       name: "*"
       state: latest
 
+  - name: Install GUI workstation
+    when: use_gui
+    block:
+      - name: GUI Packages
+        yum:
+          state: latest
+          name:
+            - "@Workstation"
+            - "@GNOME Desktop Environment"
+            - firefox
+      - name: Set boot-to-gui
+        command: systemctl set-default graphical.target
+
   - name: Enable powertools repository
     shell: dnf config-manager --set-enabled powertools
-
   - name: Base dependencies
     yum:
       name:
@@ -53,25 +65,18 @@
       name: nodejs
       state: present
 
-  - name: Disable system postgres
-    shell: dnf -qy module disable postgresql
 
-  - name: Install Postgres Repository
-    yum:
-      name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-      state: present
-      disable_gpg_check: true
-
+  ### The Upstream PGDG repo has broken signing keys on occasion 
+  ### which totally breaks everything.  Use the RHEL8 postgres 12
+  ### module instead
   - name: Install Postgres 12
     yum:
-      name: 
-        - postgresql12
-        - postgresql12-server
+      name: "@postgresql:12"
       state: present
 
   - name: Check for database directory
     stat:
-      path: /var/lib/pgsql/12/data/pg_hba.conf
+      path: /var/lib/pgsql/data/pg_hba.conf
     register: pgsql_datadir
 
   # To re-initialize the database server, just
@@ -80,11 +85,11 @@
     when: not pgsql_datadir.stat.exists
     block:
       - name: Initialize database
-        shell: postgresql-12-setup initdb
+        shell: runuser --user postgres -- initdb /var/lib/pgsql/data
       
       - name: Write new hba configuration file
         copy:
-          dest: /var/lib/pgsql/12/data/pg_hba.conf
+          dest: /var/lib/pgsql/data/pg_hba.conf
           content: |
             # type db   user      addr           method
             local  all  postgres                 peer
@@ -95,13 +100,13 @@
       
       - name: Postgres listen on all addresses
         lineinfile:
-          path: /var/lib/pgsql/12/data/postgresql.conf
+          path: /var/lib/pgsql/data/postgresql.conf
           regex: ^listen_addresses =
           value: listen_addresses = '*'
 
   - name: Start postgres server
     systemd:
-      name: postgresql-12
+      name: postgresql
       enabled: true
       state: started
 
@@ -118,6 +123,10 @@
         become: yes
         become_user: postgres
 
+  - name: Get service state
+    service_facts:
+    register: services_state
+  
   - name: Open the firewall for AMP, Galaxy, and Postgres
     firewalld:
       port: "{{ item }}/tcp"
@@ -129,6 +138,7 @@
       - 8080
       - 8082
       - 5432
+    when: services_state.ansible_facts.services['firewalld.service'].state == "running"
 
   - name: Set Java 11 to be the default java
     shell: alternatives --set {{ item }} $(alternatives --display {{ item }} | grep 'family java-11-openjdk' | cut -d' ' -f1 )
@@ -149,3 +159,4 @@
       enabled: true
       state: started
       
+

@@ -15,7 +15,8 @@ if [ ! -e settings.yml ]; then
 fi
 
 # do all of the ansible stuff
-sudo ansible-playbook amp_bootstrap.yml -i inventory.yml "$@"
+sudo ansible-playbook amp_bootstrap.yml -i inventory.yml \
+     --extra-vars "use_gui=$GUI_WORKSTATION" "$@"
 
 # create a usable default configuration file
 ./gen_default_config.py
