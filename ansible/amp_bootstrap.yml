@@ -13,14 +13,17 @@
       name: "*"
       state: latest
 
-  - name: Install GUI workstation software
-    yum:
-      state: latest
-      name:
-        - "@GNOME Desktop Environment"
-        - firefox
+  - name: Install GUI workstation
     when: "{{ lookup('env', 'GUI_WORKSTATION') != '' }}"
-
+    block:
+      - name: GUI Packages
+        yum:
+          state: latest
+          name:
+            - "@GNOME Desktop Environment"
+            - firefox
+      - name: Set boot-to-gui
+        command: systemctl set-default graphical.target
 
   - name: Enable powertools repository
     shell: dnf config-manager --set-enabled powertools
