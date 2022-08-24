@@ -52,7 +52,14 @@ Boot the ISO and Install Rocky Linux with these options:
 This repository has the scripts needed to install all of the
 requirements for AMP and set up the OS.
 
-Log into the VM as the amp user and run this command to start bootstrapping the VM...
+Log into the VM as the amp user to start the bootstrapping process.
+
+If you wish the VM to have the Workstation environment installed, run this command:
+```
+export GUI_WORKSTATION=1
+```
+
+To start bootstrapping the VM, run this command
 
 ```
 curl https://raw.githubusercontent.com/AudiovisualMetadataPlatform/amp_bootstrap/main/ansible/vm_bootstrap.sh | /bin/bash
@@ -67,6 +74,7 @@ The command above will start the vm_bootstrap.sh script which will:
   * creates a password for the amp database user (if it hasn't done so before)
   * runs the ansible playbook amp_bootstrap.yml, which will:
     * update the system packages
+    * install the GUI (if desired)
     * install the packages needed for AMP
     * install and configure PostgreSQL 12 (using the password above)
     * open the firewall for 8080 (AMP), 8082 (Galaxy), and 5432 (PostgreSQL)
@@ -116,10 +124,11 @@ The developer logs into the VM's GUI as the amp user and builds/modifies/install
 
 Setting up this environment would consist of:
 * Installing the workstation software: 
+  * If the GUI wasn't installed during the bootstrap, it can be added by running:
     * `sudo dnf groupinstall -y Workstation`
     * `sudo systemctl set-default graphical`
     * `sudo shutdown -r now`
-    * When logging in the first time, select the gear next to the "Sign In" button before entering the password, and select "Classic (Wayland display server)" for a more traditional desktop experience.
+  * When logging in the first time, select the gear next to the "Sign In" button before entering the password, and select "Classic (Wayland display server)" for a more traditional desktop experience.
 * Installing the developer's preferred IDE (commands vary)
 * Configuring git on the VM
   * user.name and user.email
