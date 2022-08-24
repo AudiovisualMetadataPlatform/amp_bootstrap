@@ -60,7 +60,7 @@
   - name: Install Postgres 12
     yum:
       name: "@postgresql:12"
-    state: present
+      state: present
 
   - name: Check for database directory
     stat:
@@ -73,7 +73,7 @@
     when: not pgsql_datadir.stat.exists
     block:
       - name: Initialize database
-        shell: initdb
+        shell: runuser --user postgres -- initdb /var/lib/pgsql/data
       
       - name: Write new hba configuration file
         copy:
@@ -111,6 +111,10 @@
         become: yes
         become_user: postgres
 
+  - name: Get service state
+    service_facts:
+    register: services_state
+  
   - name: Open the firewall for AMP, Galaxy, and Postgres
     firewalld:
       port: "{{ item }}/tcp"
@@ -122,6 +126,7 @@
       - 8080
       - 8082
       - 5432
+    when: services_state.ansible_facts.services['firewalld.service'].state == "running"
 
   - name: Set Java 11 to be the default java
     shell: alternatives --set {{ item }} $(alternatives --display {{ item }} | grep 'family java-11-openjdk' | cut -d' ' -f1 )
