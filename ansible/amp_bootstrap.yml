@@ -13,9 +13,17 @@
       name: "*"
       state: latest
 
+  - name: Install GUI workstation software
+    yum:
+      state: latest
+      name:
+        - "@GNOME Desktop Environment"
+        - firefox
+    when: "{{ lookup('env', 'GUI_WORKSTATION') != '' }}"
+
+
   - name: Enable powertools repository
     shell: dnf config-manager --set-enabled powertools
-
   - name: Base dependencies
     yum:
       name:
@@ -147,3 +155,4 @@
       enabled: true
       state: started
       
+
