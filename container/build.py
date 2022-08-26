@@ -41,6 +41,8 @@ def main():
     bootstrap_dir = Path(sys.path[0], "..").resolve()
     logging.info(f"Creating bootstrap tarball from {bootstrap_dir!s}")
     Path(sys.path[0], "packages").mkdir(exist_ok=True)
+    # The packages directory can't be empty or the Dockerfile will puke.
+    Path(sys.path[0], "packages/placeholder").touch()
     with tarfile.open(Path(sys.path[0], "dynamic-resources/amp_bootstrap.tar"), "w") as t:
         for file in bootstrap_dir.glob("*"):            
             if file.is_file():
@@ -70,7 +72,6 @@ def main():
                     shutil.copyfile(file, destfile)
         # fixup args.mirror so it knows to use the ones in the packages directory
         args.mirror = "NONE"
-
 
 
 
