@@ -19,7 +19,8 @@ import urllib
 import email.utils
 import platform
 import re
-
+import amp.prereq
+import amp.package
 
 amp_root = Path(sys.path[0]).parent
 #config = None
@@ -32,12 +33,15 @@ tomcat_download_version = "9.0.65"
 # mediaprobe repo
 mediaprobe_repo = "https://github.com/IUMDPI/MediaProbe.git"
 
-# development repos
-dev_repos = {
-    'amppd': 'https://github.com/AudiovisualMetadataPlatform/amppd.git',
-    'amppd-ui': 'https://github.com/AudiovisualMetadataPlatform/amppd-ui.git',
-    'amp_mgms': 'https://github.com/AudiovisualMetadataPlatform/amp_mgms.git',
-    'galaxy': 'https://github.com/AudiovisualMetadataPlatform/galaxy.git',
+runtime_prereqs = {
+    'python': [[['python3', '--version'], r'Python (\d+)\.(\d+)', 'between', (3, 7), (3, 9)]],
+    'java': [[['java', '-version'], r'build (\d+)\.(\d+)', 'exact', (11, 0)]],
+    'singularity': [[['singularity', '--version'], r'version (\d+)\.(\d+)', 'atleast', (3, 7)],
+                    [['apptainer', '--version'], None, 'any']],
+    'ffmpeg': [[['ffmpeg', '--version'], None, 'any']],
+    'file': [[['file', '--version'], None, 'any']],
+    'gcc': [[['gcc', '--version'], None, 'any']],
+    'git': [[['git', '--version'], None, 'any']]
 }
 
 
@@ -63,36 +67,23 @@ def main():
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
     p.add_argument("package", nargs="+", help="Package file(s) to install")    
 
-    # Development stuff    
-    p = subp.add_parser('devel', help="Intialize the development environment")
-    subd = p.add_subparsers(dest='devaction', help="Development actions")
-    subd.required = True
-    p = subd.add_parser('init', help="Initialize the development environment")
-    p = subd.add_parser('build', help="Build packages")
-    p.add_argument("package", nargs='*', help="Packages to build (default all)")
-    p.add_argument("--dest", type=str, default=str(amp_root / 'packages'), 
-                   help=f"Alternate destination dir (default: {amp_root / 'packages'!s})")
-
-
     args = parser.parse_args()
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
     
     try:        
-        if args.action in ('init', 'download', 'install', 'devel'):
+        if args.action in ('init', 'download', 'install'):
             # these don't need a valid config
             config = {}
         else:
             config = load_config(args.config)
 
-
         # call the appropriate action function
-        if args.action == 'devel':
-            check_prereqs(True)
-            globals()["devaction_" + args.devaction](config, args)
-        else:
-            check_prereqs()
-            globals()["action_" + args.action](config, args)
+        amp.prereq.check_prereqs(runtime_prereqs)
+            
+
+        
+        globals()["action_" + args.action](config, args)
         
             
     except Exception as e:
@@ -178,81 +169,50 @@ def action_download(config, args):
 def action_install(config, args):
     # extract the package and validate that it's OK
     for package in [Path(x) for x in args.package]:
-        with tempfile.TemporaryDirectory(prefix="amp_bootstrap_") as tmpdir:
-            logging.debug(f"Unpacking package {package!s} into {tmpdir}")
-            # I think unpack archive is broken in some situations...I seem to
-            # be losing the executable bits :(
-            #shutil.unpack_archive(str(package), str(tmpdir))
-            subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xvvf' if args.debug else '-xf', str(package)])
-            #if args.debug:
-            #    subprocess.run(f'ls -alR {tmpdir} > /dev/stderr', shell=True)
+        metadata = amp.package.validate_package(package)
+        if not amp.package.correct_architecture(metadata['arch']):
+            logging.error(f"Skipping package {package.name}: wrong architecture -- {metadata['arch']}")
+            continue
 
-            pkg_stem = package.stem.replace('.tar', '')
-            if not Path(tmpdir, pkg_stem).exists():
-                logging.error("Package doesn't contain a directory that matches the package stem")
-                exit(1)
-            pkgroot = Path(tmpdir, pkg_stem)
-            try:
-                with open(pkgroot / "amp_package.yaml") as f:
-                    pkgmeta = yaml.safe_load(f)
-            except Exception as e:
-                logging.error(f"Cannot load package metadata: {e}")
-            required_keys = set(['name', 'version', 'build_date', 'install_path'])
-            if not required_keys.issubset(set(pkgmeta.keys())):
-                logging.error(f"Malformed package: One or more required keys missing from package metadata")
-                logging.error(f"Needs: {required_keys}, has {set(pkgmeta.keys())}")
-                exit(1)
-                    
-            install_path = amp_root / pkgmeta['install_path']
+        install_path = amp_root / metadata['install_path']
+        print(f"Package Data:")
+        print(f"  Name: {metadata['name']}")
+        print(f"  Version: {metadata['version']}")
+        print(f"  Build date: {metadata['build_date']}")
+        print(f"  Architecture: {metadata['arch']}")
+        print(f"  Installation path: {install_path!s}")
 
-            print(f"Package Data:")
-            print(f"  Name: {pkgmeta['name']}")
-            print(f"  Version: {pkgmeta['version']}")
-            print(f"  Build date: {pkgmeta['build_date']}")
-            print(f"  Installation path: {install_path!s}")
+        if not args.yes:
+            if input("Continue? ").lower() not in ('y', 'yes'):
+                logging.info("Skipping package")
+                continue
 
-            if not args.yes:
-                if input("Continue? ").lower() not in ('y', 'yes'):
-                    logging.info("Installation terminated.")
-                    exit(0)
-
-            if not install_path.exists():
-                install_path.mkdir(parents=True)
-
-            # copy the files from the data directory to the install_path
-            here = Path.cwd().resolve()
-            os.chdir(pkgroot / "data")
-            try:
-                subprocess.run(['cp', '-a' if not args.debug else '-av', '.', str(install_path)], check=True)
-                #if args.debug:
-                #    subprocess.run(f'ls -alR {str(install_path)} > /dev/stderr', shell=True)
-            
-            except Exception as e:
-                print(f"Copying package failed: {e}")
-                exit(1)
-            os.chdir(here)
+            amp.package.install_package(package, amp_root)
 
             # Log the installation
             with open(amp_root / "install.log", "a") as f:
-                f.write(f"{datetime.now().strftime('%Y%m%d-%H%M%S')}: Package: {pkgmeta['name']} Version: {pkgmeta['version']}  Build Date: {pkgmeta['build_date']}\n")
+                f.write(f"{datetime.now().strftime('%Y%m%d-%H%M%S')}: Package: {metadata['name']} Version: {metadata['version']}  Build Date: {metadata['build_date']}\n")
 
             logging.info("Installation complete")
 
-            # manually deploy the servlet if it is the UI or REST
-            servlets = {
-                'amp_ui': 'ROOT.war',
-                'amp_rest': 'rest.war'
-            }
-            if pkgmeta['name'] in servlets:
-                logging.info("Deploying war file")
-                warfile = amp_root / f'tomcat/webapps/{servlets[pkgmeta["name"]]}'
-                deployroot = amp_root / f'tomcat/webapps/{Path(servlets[pkgmeta["name"]]).stem}'
-                # remove everything in the deploy root
-                if deployroot.exists():
-                    shutil.rmtree(deployroot)
-                with zipfile.ZipFile(warfile, 'r') as zfile:
-                    zfile.extractall(deployroot)
-                warfile.unlink()
+
+            if False:
+                # BDW: this should be in a post hook
+                # manually deploy the servlet if it is the UI or REST
+                servlets = {
+                    'amp_ui': 'ROOT.war',
+                    'amp_rest': 'rest.war'
+                }
+                if pkgmeta['name'] in servlets:
+                    logging.info("Deploying war file")
+                    warfile = amp_root / f'tomcat/webapps/{servlets[pkgmeta["name"]]}'
+                    deployroot = amp_root / f'tomcat/webapps/{Path(servlets[pkgmeta["name"]]).stem}'
+                    # remove everything in the deploy root
+                    if deployroot.exists():
+                        shutil.rmtree(deployroot)
+                    with zipfile.ZipFile(warfile, 'r') as zfile:
+                        zfile.extractall(deployroot)
+                    warfile.unlink()
 
 
 def action_configure(config, args): 
@@ -604,55 +564,6 @@ def action_restart(config, args):
     action_stop(config, args)
     action_start(config, args)
 
-###########################################
-# Development Actions
-###########################################
-def devaction_init(config, args):
-    "Configure the evironment for development"
-    # make sure the basic configuration is installed
-    action_init(config, args)
-    
-    logging.info("Creating development envrionment")
-    if not (amp_root / "src_repos").exists():
-        (amp_root / "src_repos").mkdir()
-    here = os.getcwd()
-    os.chdir(amp_root / "src_repos")
-    for repo in dev_repos:
-        repodir = amp_root / f"src_repos/{repo}"
-        if not repodir.exists():
-            logging.info(f"Cloning {repo}")
-            try:
-                subprocess.run(['git', 'clone', '--recursive', dev_repos[repo]], check=True)
-            except Exception as e:
-                logging.error(f"Failed to clone {repo}: {e}")
-                exit(1)
-        else:
-            logging.info(f"{repo} is already cloned")
-    os.chdir(here)
-
-
-def devaction_build(config, args):
-    "Build the packages!"
-    if not args.package:
-        args.package = list(dev_repos.keys())
-
-    for pkg in args.package:
-        if pkg not in dev_repos:
-            logging.warning(f"Skipping {pkg} since it doesn't appear to be a valid repo")
-            continue
-        here = os.getcwd()
-        os.chdir(amp_root / f"src_repos/{pkg}")
-        logging.info(f"Building packages for {pkg}")
-        p = subprocess.run(['./amp_build.py', '--package', args.dest])
-        if p.returncode:
-            logging.error(f"Failed building package for repo {pkg}")
-            exit(1)
-        os.chdir(here)
-
-    # create the manifest
-    with open(args.dest + "/manifest.txt", "w") as m:
-        for f in Path(args.dest).glob("*.tar"):
-            m.write(f.name + "\n")
 
 
 ###########################################
@@ -726,100 +637,6 @@ def _merge(model, overlay, context=None):
             model[k] = overlay[k]
 
 
-def check_prereqs(dev=False):
-    "Check the system prerequisites"
-    logging.info(f"Checking {'development' if dev else 'system'} prerequisites")
-    failed = False
-    # check our python version.  The version of galaxy we're running requires
-    # a python that's >= 3.6 and <= 3.9.  3.10 definitely breaks things.
-    # since we're running the in-path python, we can use our instance to 
-    # determine which python is installed.
-    if not (6 <= int(platform.python_version_tuple()[1]) <= 9):
-        logging.error(f"AMP requires python 3.6 - 3.9.  You're running {platform.python_version()}")
-        failed = True
-
-    # amppd requires JRE 11, although it might run on newer versions.  Let's 
-    # not take a chance and force it here.    
-    v = get_version('java', ['-version'], r'version "(\d+)\.(\d+)') 
-    if not v:
-        failed = True
-    else:    
-        if v != (11, 0):
-            logging.error(f"Found JRE version {v}, need (11, 0)")
-            failed = True
-
-    # Singularity 3.7 or greater (or apptainer 1.0 or newer)
-    v = get_version('apptainer', ['--version'], r'version (\d+)\.(\d+)', exists_warning=True)
-    if not v:
-        # ok, apptainer isn't installed, so look for singularity
-        v = get_version('singularity', ['--version'], r'version (\d+)\.(\d+)')
-        if not v:
-            logging.error("Neither apptainer nor singularity is available")
-            failed = True
-        else:
-            if v <= (3, 7):
-                logging.error(f"Found singularity version {v}, need 3.7 or greater")
-                failed = True
-    else:
-        # if we have apptainer, we're good, but let's make sure the singularity
-        # symlink is there.
-        if not shutil.which('singularity'):
-            failed = True
-            logging.error("Apptainer is installed, but the singularity symlink isn't available")
-        
-    # just make sure ffmpeg is here
-    v = get_version('ffmpeg')
-    if not v:
-        failed = True
-
-    # and the same with file
-    v = get_version('file')
-    if not v:
-        failed = True
-
-    # galaxy sometimes really, really wants gcc.  So let's make sure there's one there
-    v = get_version('gcc')
-    if not v:
-        failed = True
-
-
-    # Development tools
-    if dev:
-        # JDK
-        v = get_version('javac', ['--version'], r'javac (\d+)\.(\d+)')
-        if not v:
-            failed = True
-        else:    
-            if v != (11, 0):
-                logging.error(f"Found JDK version {v}, need (11, 0)")
-                failed = True       
-        
-        # Node.js 12 - 14
-        v = get_version('node', ['--version'], r'v(\d+)')
-        if not v:
-            failed = True
-        else:
-            if not ((12, ) <= v <= (14, )):
-                logging.error(f"Found node.js version {v}, need 12 or 14")
-                failed = True
-
-        # just make sure make is there somewhere
-        v = get_version('make')
-        if not v:
-            failed = True
-
-        # and lastly, check for docker and/or podman
-        dv = get_version('docker', exists_warning=True)
-        pv = get_version('podman', exists_warning=True)
-        if not (pv or dv):
-            logging.warning("Neither podman nor docker found.  You will not be able to build a containerized version")
-        else:
-            logging.info(f"Use {'podman' if pv else 'docker'} to build a container.")
-
-
-    if failed:
-        logging.error("Prerequistes have failed.  Install them and try again")
-        exit(1)
 
 
 def get_version(cmd, args=None, pattern=None, exists_warning=False):
