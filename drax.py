@@ -22,6 +22,7 @@ SETTLE_TIME = 15 * 60
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--debug', default=False, action="store_true", help="turn on debugging")
+    parser.add_argument("--now", default=False, action="store_true", help="Don't wait for packages to settle")
     args = parser.parse_args()
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
@@ -33,28 +34,30 @@ def main():
         logging.debug(f"Lockfile {lockfile!s} exists")
         exit(0)
     lockfile.write_text(str(os.getpid()) + "\n")
-    try:
-        install_log = Path(sys.path[0], "../install.log")
-        last_install = 0 if not install_log.exists() else install_log.stat().st_mtime
+    try:        
         pkg_dir = Path(sys.path[0], "../packages")
+        last_run_file = pkg_dir / ".last_run"
+        last_run = 0 if not last_run_file.exists() else last_run_file.stat().st_mtime
+        
         packages = []        
-        logging.debug(f"Scanning for packages newer than {last_install}")
+        logging.debug(f"Scanning for packages newer than {last_run}")
         for pfile in pkg_dir.glob("*.tar"):
             ptime = pfile.stat().st_mtime            
-            if ptime > last_install:
-                logging.debug(f"{pfile!s} has time {ptime}")
-                if time.time() - SETTLE_TIME > ptime:                    
+            if ptime > last_run:
+                logging.debug(f"{pfile!s} has time {ptime}")                
+                if args.now or time.time() - SETTLE_TIME > ptime:                    
                     logging.debug(f"Package file {pfile!s} has settled")
                     packages.append(pfile)
-
+            
         if packages:
+            last_run_file.touch(exist_ok=True)
             logging.info(f"New packages are available: {[str(x) for x in packages]}")
             
             logging.info(f"Shutting down AMP")            
             run(['./amp_control.py', 'stop', 'all'], check=True)
 
             logging.info(f"Updating the bootstrap")
-            run(['git', 'pull'], check=True)
+            run(['git', 'pull'])
 
             logging.info(f"Installing the packages")
             run(['./amp_control.py', 'install',  '--yes', *[str(x.absolute()) for x in packages]], check=True)
@@ -65,7 +68,7 @@ def main():
             logging.info(f"Starting the instance")
             run(['./amp_control.py', 'start', 'all'], check=True)
 
-    finally:
+    finally:   
         lockfile.unlink()
         
 
