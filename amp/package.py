@@ -20,7 +20,15 @@ import os
 #   * version: Package version
 #   * build_date: Package build date as yyyymmdd_hhmmss 
 #   * install_path: Installation directory, relative to the AMP root
+#   * hooks:  hook -> script mapping for different packing actions
 # * A data directory which contains the payload
+# * A hooks directory for any hook scripts
+#
+# Supported hooks:
+#   pre => script is run prior to installation.  Args:  installation directory
+#   post => script is run after files have been written to filesystem.  Args: installation directory
+#   config => script is run during configuraiton phase
+
 
 REQUIRED_META = set(('format', 'name', 'version', 'build_date', 'install_path', 'arch'))
 
@@ -42,11 +50,10 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, hoo
     if missing_meta:
         raise ValueError(f"Metadata is missing these keys: {missing_meta}")
 
-    # Merge the hooks into to the metadata (if we need to)
-    if hooks:
-        metadata['hooks'] = {}
-        for h in hooks:
-            metadata['hooks'][h] = hooks[h]
+    # Merge the hooks into to the metadata
+    metadata['hooks'] = {}    
+    for h in hooks:
+        metadata['hooks'][h] = hooks[h]
 
     # now that everything looks good, create the tarball.
     logging.info(f"Creating package for {metadata['name']} with version {metadata['version']} in {destination_dir}")
@@ -70,9 +77,7 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, hoo
 
         # grab the payload
         logging.debug(f"Pushing data from {payload_dir!s} to data in tarball")
-        for pfile in payload_dir.glob("**/*"):            
-            logging.debug(f"Adding {pfile!s} as {basename}/data/{pfile.relative_to(payload_dir)!s}")
-            tfile.add(pfile, f'{basename}/data/{pfile.relative_to(payload_dir)!s}')
+        tfile.add(payload_dir, f"{basename}/data", recursive=True)
 
         # grab any hooks
         if hooks:
@@ -81,7 +86,6 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, hoo
             hooks_dir.type = tarfile.DIRTYPE
             hooks_dir.mode = 0o755
             tfile.addfile(hooks_dir, None)                    
-
             # add each of the hooks
             for h in hooks:
                 tfile.add(hooks[h], basename + "/hooks/" + Path(hooks[h]).name)
@@ -130,7 +134,6 @@ def install_package(package, amp_root):
         logging.debug(f"Unpacking package {package!s} into {tmpdir}")
         pkgroot = Path(tmpdir, package.stem)
         subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xf', str(package)])
-        subprocess.run(['ls', '-alR', tmpdir])
         with open(pkgroot / "amp_package.yaml") as f:
             metadata = yaml.safe_load(f)
 
@@ -139,7 +142,7 @@ def install_package(package, amp_root):
             install_path.mkdir(parents=True)
 
         # check for a pre-install hook
-        if 'hooks' in metadata and 'pre' in metadata['hooks']:
+        if 'pre' in metadata['hooks']:
             hook = pkgroot / "hooks" / metadata['hooks']['pre']
             if hook.exists():
                 try:
@@ -149,7 +152,7 @@ def install_package(package, amp_root):
                     raise Exception(f"Pre-install script failed: {e}")                
 
         # copy the files from the data directory to the install_path
-        logging.debug(f"Copying files from {pkgroot / 'data'!s} to {install_path!s}")
+        logging.debug(f"Copying files from {pkgroot / 'data'!s} to {install_path!s}")        
         here = Path.cwd().resolve()
         os.chdir(pkgroot / "data")
         try:
@@ -159,7 +162,7 @@ def install_package(package, amp_root):
         os.chdir(here)
 
         # execute any post-install hooks
-        if 'hooks' in metadata and 'post' in metadata['hooks']:
+        if 'post' in metadata['hooks']:
             hook = pkgroot / "hooks" / metadata['hooks']['post']
             if hook.exists():
                 try:
@@ -167,4 +170,5 @@ def install_package(package, amp_root):
                     subprocess.run([str(hook), str(install_path)], check=True)
                 except Exception as e:
                     raise Exception(f"Pre-install script failed: {e}")                
+
 

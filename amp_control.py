@@ -19,8 +19,8 @@ import urllib
 import email.utils
 import platform
 import re
-import amp.prereq
-import amp.package
+from amp.prereq import *
+from amp.package import *
 
 amp_root = Path(sys.path[0]).parent
 #config = None
@@ -79,7 +79,7 @@ def main():
             config = load_config(args.config)
 
         # call the appropriate action function
-        amp.prereq.check_prereqs(runtime_prereqs)
+        check_prereqs(runtime_prereqs)
             
 
         
@@ -169,8 +169,8 @@ def action_download(config, args):
 def action_install(config, args):
     # extract the package and validate that it's OK
     for package in [Path(x) for x in args.package]:
-        metadata = amp.package.validate_package(package)
-        if not amp.package.correct_architecture(metadata['arch']):
+        metadata = validate_package(package)
+        if not correct_architecture(metadata['arch']):
             logging.error(f"Skipping package {package.name}: wrong architecture -- {metadata['arch']}")
             continue
 
@@ -187,7 +187,7 @@ def action_install(config, args):
                 logging.info("Skipping package")
                 continue
 
-            amp.package.install_package(package, amp_root)
+            install_package(package, amp_root)
 
             # Log the installation
             with open(amp_root / "install.log", "a") as f:

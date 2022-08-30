@@ -26,10 +26,10 @@ def setup():
         pythonpath = ":".join(pythonpath)    
     os.environ['PYTHONPATH'] = pythonpath
 
-    # Export the AMP_ROOT
-    os.environ['AMP_ROOT'] = str(Path(sys.path[0], "..").absolute())
+    # Export the AMP_ROOT and AMP_DATA_ROOT
+    os.environ['AMP_ROOT'] = str(Path(sys.path[0], "..").resolve().absolute())
+    os.environ['AMP_DATA_ROOT'] = str(Path(sys.path[0], '../data').resolve().absolute())
 
     # Put the amp_python container into the path 
     if 'amp_python' not in os.environ['PATH']:
         os.environ['PATH'] = str(Path(sys.path[0], "../amp_python").absolute()) + ":" + os.environ['PATH']
-        
