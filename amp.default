@@ -57,7 +57,7 @@ galaxy:
             - amp_mgms/extract_audio.xml
             - amp_mgms/remove_trailing_silence.xml
         Audio Segmentation:
-            - amp_mgms/ina_speech_segmenter.xml.xml
+            - amp_mgms/ina_speech_segmenter.xml
             - amp_mgms/keep_speech.xml
             - amp_mgms/remove_silence_speech.xml
             - amp_mgms/adjust_transcript_timestamps.xml
@@ -80,7 +80,7 @@ galaxy:
             - amp_mgms/contact_sheet_frame.xml
             - amp_mgms/contact_sheet_face.xml
             - amp_mgms/contact_sheet_shot.xml
-            - amp_mgms/contact_sheet_vocr.xm
+            - amp_mgms/contact_sheet_vocr.xml
         Shot Detection:
             - amp_mgms/pyscenedetect.xml
             - amp_mgms/azure_shot_detection.xml
