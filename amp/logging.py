@@ -22,6 +22,7 @@ class TimedRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
 
 
 def setup_logging(basename: str, debug: bool):
+    "Setup the logging subsystem.  If basename is None no persistent log will be created"
     logging_level = logging.DEBUG if debug else logging.INFO
     formatter = logging.Formatter("%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d:%(process)d)  %(message)s")
 
@@ -37,20 +38,21 @@ def setup_logging(basename: str, debug: bool):
     # if we have access the the AMP_DATA_ROOT environment variable
     # and the logs directory exists, then we can set up the
     # file handler.
-    if 'AMP_DATA_ROOT' in os.environ:
-        try:
-            log_path = Path(os.environ['AMP_DATA_ROOT'], "logs")
-            if log_path.exists() and log_path.is_dir():                
-                file = TimedRotatingFileHandler(log_path / f"{basename}.log", when='midnight', encoding='utf-8')
-                file.setLevel(logging_level)
-                file.setFormatter(formatter)
-                logger.addHandler(file)
-            else:
-                logging.info("Skipping persisent logging since the logs directory doesn't exist in AMP_DATA_ROOT")
-        except Exception as e:
-            raise OSError(f"Cannog set up logging because: {e}")
-    else:
-        logging.info("Skipping persistent logging since AMP_DATA_ROOT isn't set")
+    if basename is not None:
+        if 'AMP_DATA_ROOT' in os.environ:
+            try:
+                log_path = Path(os.environ['AMP_DATA_ROOT'], "logs")
+                if log_path.exists() and log_path.is_dir():                
+                    file = TimedRotatingFileHandler(log_path / f"{basename}.log", when='midnight', encoding='utf-8')
+                    file.setLevel(logging_level)
+                    file.setFormatter(formatter)
+                    logger.addHandler(file)
+                else:
+                    logging.info("Skipping persisent logging since the logs directory doesn't exist in AMP_DATA_ROOT")
+            except Exception as e:
+                raise OSError(f"Cannog set up logging because: {e}")
+        else:
+            logging.info("Skipping persistent logging since AMP_DATA_ROOT isn't set")
 
 
 
