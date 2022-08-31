@@ -21,6 +21,7 @@ import platform
 import re
 from amp.prereq import *
 from amp.package import *
+import amp.environment
 
 amp_root = Path(sys.path[0]).parent
 #config = None
@@ -63,8 +64,12 @@ def main():
     p = subp.add_parser('restart', help="Restart one or more services")
     p.add_argument("service", help="AMP service to restart, or 'all' for all services")
     p = subp.add_parser('configure', help="Configure AMP")
+    p.add_argument("--dump", default=False, action="store_true", help="Dump the configuration instead of applying it")
     p = subp.add_parser('install', help="Install a package")
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
+    p.add_argument('--nodeps', default=False, action="store_true", help="Ignore dependencies when installing")
+    p.add_argument('--force', default=False, action='store_true', help="Install even if the version is older")
+    p.add_argument('--info', default=False, action="store_true", help="Show package information instead of installing")
     p.add_argument("package", nargs="+", help="Package file(s) to install")    
 
     args = parser.parse_args()
@@ -111,7 +116,8 @@ def action_init(config, args):
         (amp_root / 'tomcat/webapps').mkdir()
     
     # create a bunch of directories we can populate later...
-    for n in ('packages', 'galaxy', 'data', 'data/symlinks', 'data/config'):
+    for n in ('packages', 'galaxy', 'data', 'data/symlinks', 'data/config', 'data/default_config',
+              'data/package_hooks'):
         d = amp_root / n
         if not d.exists():
             logging.info(f"Creating {d!s}")
@@ -137,6 +143,7 @@ def action_init(config, args):
 
 def action_download(config, args):
     "download packages from URL directory"
+    # TODO: truncates at 1G?
 
     dest = Path(args.dest)
     if not dest.exists() or not dest.is_dir():
@@ -167,56 +174,156 @@ def action_download(config, args):
 
 
 def action_install(config, args):
-    # extract the package and validate that it's OK
-    for package in [Path(x) for x in args.package]:
-        metadata = validate_package(package)
-        if not correct_architecture(metadata['arch']):
-            logging.error(f"Skipping package {package.name}: wrong architecture -- {metadata['arch']}")
-            continue
-
-        install_path = amp_root / metadata['install_path']
-        print(f"Package Data:")
+    # set up the environment so any scripts have what they need.
+    def render_metadata(filename, metadata, install_path=None):
+        print(f"Package Data for {filename!s}:")
         print(f"  Name: {metadata['name']}")
         print(f"  Version: {metadata['version']}")
         print(f"  Build date: {metadata['build_date']}")
         print(f"  Architecture: {metadata['arch']}")
-        print(f"  Installation path: {install_path!s}")
+        print(f"  Dependencies: {metadata['dependencies']}")                
+        print(f"  Installation path: {install_path if install_path else 'AMP_ROOT/' + metadata['install_path']!s}")
+        
 
-        if not args.yes:
-            if input("Continue? ").lower() not in ('y', 'yes'):
-                logging.info("Skipping package")
-                continue
+    amp.environment.setup()
+    with PackageDB(amp_root / "packagedb.yaml") as pdb:        
+        # go through the selected packages to validate them and get metadata
+        metadata = {}
+        for package in [Path(x) for x in args.package]:
+            try:
+                pmeta = validate_package(package)
+                if not correct_architecture(pmeta['arch']):
+                    logging.warning(f"Skipping package {package.name}: wrong architecture -- {metadata['arch']}")
+                    continue
+                pmeta['package_file'] = package                                
+                metadata[pmeta['name']] = pmeta
+            except Exception as e:
+                logging.warning(f"Skipping package {package.name} because it failed validation: {e}")
 
-            install_package(package, amp_root)
 
-            # Log the installation
-            with open(amp_root / "install.log", "a") as f:
-                f.write(f"{datetime.now().strftime('%Y%m%d-%H%M%S')}: Package: {metadata['name']} Version: {metadata['version']}  Build Date: {metadata['build_date']}\n")
+        if args.info:
+            # display the package information and then exit.
+            for p in metadata:
+                render_metadata(metadata[p]['package_file'], metadata[p])
+            return
 
-            logging.info("Installation complete")
+        # This is moderately hard -- I need to install the packages so they
+        # have all of their dependencies first.  I'm a lazy sort of guy, so 
+        # I'm going to loop through all of the outstanding packages, installing
+        # what I can and when I get to a point that either (a) there's nothing
+        # left to do or (b) there are still items but I can't install anything 
+        # else, I'm done.  In case (b) that would mean that I have an unfulfilled
+        # dependency or a cross-dependency, neither of which I can fix.
+        # BUT there's an escape hatch here: the --nodeps flag will ignore 
+        # dependencies and install regardless!
+        while metadata:
+            did_something = False
+            for pkgname in list(metadata.keys()):
+                installed_packages = set(pdb.packages())
+                pkgmeta = metadata[pkgname]
+                if args.nodeps or set(pkgmeta['dependencies']).issubset(installed_packages):
+                    install_path = amp_root / pkgmeta['install_path']                            
+                    new_version = pkgmeta['version']
+                    installed_version = "0.0" if pkgname not in installed_packages else pdb.info(pkgname)['version']                    
+                    if args.force or newer_version(installed_version, new_version):
+                        render_metadata(pkgmeta['package_file'], pkgmeta, install_path)                        
+                        if not args.yes:
+                            if input("Continue? ").lower() not in ('y', 'yes'):
+                                logging.info("Skipping package")
+                                continue
+                        install_package(pkgmeta['package_file'], amp_root)
+                        pdb.install(pkgname, pkgmeta['version'], pkgmeta['dependencies'])
+                        metadata.pop(pkgname)
+                        did_something = True
+                    else:
+                        logging.warning(f"Skipping {pkgname} because the installed version ({installed_version}) is newer than the package version ({new_version})")
+                        metadata.pop(pkgname)
+                else:
+                    logging.debug(f"Package {pkgname} fails needed dependencies: Needs: {set(pkgmeta['dependencies'])}, Installed: {installed_packages}")
+                                    
+            if not did_something and metadata:
+                installed_packages = set(pdb.packages())
+                for pkg in metadata:
+                    logging.warning(f"Skipping package {pkg} because dependencies could not be resolved:  wants: {set(metadata[pkg]['dependencies'])}, installed: {installed_packages}")
+
+                break
 
 
-            if False:
-                # BDW: this should be in a post hook
-                # manually deploy the servlet if it is the UI or REST
-                servlets = {
-                    'amp_ui': 'ROOT.war',
-                    'amp_rest': 'rest.war'
-                }
-                if pkgmeta['name'] in servlets:
-                    logging.info("Deploying war file")
-                    warfile = amp_root / f'tomcat/webapps/{servlets[pkgmeta["name"]]}'
-                    deployroot = amp_root / f'tomcat/webapps/{Path(servlets[pkgmeta["name"]]).stem}'
-                    # remove everything in the deploy root
-                    if deployroot.exists():
-                        shutil.rmtree(deployroot)
-                    with zipfile.ZipFile(warfile, 'r') as zfile:
-                        zfile.extractall(deployroot)
-                    warfile.unlink()
+        exit(1)
+
+        for package in [Path(x) for x in args.package]:
+            #extract the package and validate that it's OK
+            
+            install_path = amp_root / metadata['install_path']
+            print(f"Package Data:")
+            print(f"  Name: {metadata['name']}")
+            print(f"  Version: {metadata['version']}")
+            print(f"  Build date: {metadata['build_date']}")
+            print(f"  Architecture: {metadata['arch']}")
+            print(f"  Installation path: {install_path!s}")
+
+            if not args.yes:
+                if input("Continue? ").lower() not in ('y', 'yes'):
+                    logging.info("Skipping package")
+                    continue
+
+                install_package(package, amp_root)
+
+                
+                with open(amp_root / "install.log", "a") as f:
+                    f.write(f"{datetime.now().strftime('%Y%m%d-%H%M%S')}: Package: {metadata['name']} Version: {metadata['version']}  Build Date: {metadata['build_date']}\n")
+
+                logging.info("Installation complete")
+
+
+                if False:
+                    # BDW: this should be in a post hook
+                    # manually deploy the servlet if it is the UI or REST
+                    servlets = {
+                        'amp_ui': 'ROOT.war',
+                        'amp_rest': 'rest.war'
+                    }
+                    if pkgmeta['name'] in servlets:
+                        logging.info("Deploying war file")
+                        warfile = amp_root / f'tomcat/webapps/{servlets[pkgmeta["name"]]}'
+                        deployroot = amp_root / f'tomcat/webapps/{Path(servlets[pkgmeta["name"]]).stem}'
+                        # remove everything in the deploy root
+                        if deployroot.exists():
+                            shutil.rmtree(deployroot)
+                        with zipfile.ZipFile(warfile, 'r') as zfile:
+                            zfile.extractall(deployroot)
+                        warfile.unlink()
 
 
 def action_configure(config, args): 
     "Configure the amp system"
+    if args.dump:
+        print(yaml.safe_dump(config))
+        exit(0)
+
+    # set up the environment
+    amp.environment.setup()
+
+    # walk through everything that has a config hook file.
+    # There shouldn't be any cases where the configuration
+    # order is important.
+
+    for hookfile in (amp_root / "data/package_hooks").glob("*__config"):
+        try:
+            cmd = [str(hookfile)]
+            if args.debug:
+                cmd.append("--debug")
+            logging.info(f"Running config hook {hookfile.name}")
+            subprocess.run(cmd, check=True)
+        except Exception as e:
+            logging.error(f"Failed to configure {hookfile.name}: {e}")
+            exit(1)
+
+    exit(1)    
+
+
+
+
     logging.info("Configuring Galaxy")
     config_galaxy(config, args)
     logging.info("Configuring Tomcat")
@@ -227,102 +334,6 @@ def action_configure(config, args):
     config_rest(config, args)
     logging.info("Configuration complete")
 
-
-def config_galaxy(config, args):
-    # config/galaxy.yml isn't a real YAML file, so writing this is actually a manual dump
-    # for the uwsgi section, and a real yaml dump for the galaxy section.
-    with open(amp_root / "galaxy/config/galaxy.yml", "w") as f:
-        f.write("## Automatically generated file, do no edit\n")
-        f.write("uwsgi:\n")
-        # the host/port for galaxy
-        port = config['amp']['port'] + 2
-        config['amp']['galaxy_port'] = port  # we'll need this value later.
-        host = config['galaxy'].get('host', '')
-        f.write(f"  http: {host}:{port}\n")
-        
-        # the application mount settings        
-        f.write(f"  mount: {config['galaxy']['root']}=galaxy.webapps.galaxy.buildapp:uwsgi_app()\n")
-        f.write(f"  manage-script-name: true\n")
-
-        # do the uwsgi things
-        for k,v in config['galaxy']['uwsgi'].items():
-            if isinstance(v, bool):
-                f.write(f"  {k}: {'true' if v else 'false'}\n")                
-            elif isinstance(v, list):
-                for x in v:
-                    f.write(f"  {k}: {x}\n")
-            else:
-                f.write(f"  {k}: {v}\n")
-
-        # Now for the actual galaxy config stuff.  It is really
-        # yaml, so we can just build the data structure in memory
-        # and append it to the file.
-        galaxy = config['galaxy']['galaxy']
-
-        # the admin user
-        galaxy['admin_users']  = config['galaxy']['admin_username']
-        
-        # id_secret -- fail if it hasn't been changed
-        if config['galaxy']['id_secret'] == 'CHANGE ME':
-            logging.error("The galaxy id_secret needs to be changed for successful installation")
-            exit(1)
-        else:
-            galaxy['id_secret'] = config['galaxy']['id_secret']
-
-        f.write(yaml.safe_dump({'galaxy': galaxy}))
-        f.write("\n")
-
-    # set up the galaxy python
-    logging.info("Installing galaxy python and node")
-    os.environ['GALAXY_ROOT'] = str(amp_root / "galaxy")
-    here = os.getcwd()
-    os.chdir(amp_root / "galaxy")
-    try:
-        subprocess.run(['scripts/common_startup.sh'], check=True)
-    except Exception as e:
-        logging.error(f"Could not set up galaxy python: {e}")
-        exit(1)
-    galaxy_python = str(amp_root / "galaxy/.venv/bin/python")
-
-    # Now that there's a configuration (and python), let's create the DB (if needed)
-    # and create the user.  
-    logging.info("Creating galaxy database")
-    subprocess.run([str(amp_root / "galaxy/create_db.sh")], check=True)
-    # now that there's a database, we need to have an admin user created, with the
-    # password specified.  Luckily, there's a script at 
-    # https://gist.github.com/jmchilton/1979583 that was referenced in scripts/db_shell.py
-    # that shows how to set up an administration user.  galaxy_configure.py is based 
-    # heavily on those things.
-    try:
-        p = subprocess.run([galaxy_python, sys.path[0] + "/galaxy_configure.py", 
-                            config['galaxy']['admin_username'], config['galaxy']['admin_password'], config['galaxy']['id_secret']],
-                        check=True, stdout=subprocess.PIPE, encoding='utf-8')
-        if not p.stdout.startswith('user_id='):
-            raise ValueError("Galaxy configuration didn't return a user_id")
-        (_, config['galaxy']['user_id']) = p.stdout.splitlines()[0].split('=', 1)
-        print(config['galaxy']['user_id'])
-    except Exception as e:
-        logging.error(f"Galaxy database config failed: {e}")
-        exit(1)
-
-    logging.info("Creating the galaxy toolbox configuration")
-    with open(amp_root / "galaxy/config/tool_conf.xml", "w") as f:
-        f.write('<?xml version="1.0" encoding="utf-8"?>\n<toolbox monitor="true">\n')
-        counter = 0
-        for s in config['galaxy']['toolbox']:
-            f.write(f'  <section id="sect_{counter}" name="{s}">\n')
-            for t in config['galaxy']['toolbox'][s]:
-                f.write(f'    <tool file="{t}"/>\n')
-            f.write("  </section>\n")
-            counter += 1
-        f.write("</toolbox>\n")
-
-    logging.info("Creating the MGM configuration file")
-    with open(amp_root / "galaxy/tools/amp_mgms/amp_mgm.ini", "w") as f:
-        for s in config['mgms']:
-            f.write(f'[{s}]\n')
-            for k,v in config['mgms'][s].items():
-                f.write(f'{k} = {v}\n')
 
 
 

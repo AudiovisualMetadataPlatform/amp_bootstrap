@@ -11,6 +11,9 @@ import platform
 import tempfile
 import subprocess
 import os
+import shutil
+import re
+import fcntl
 
 # Packages are simple tarballs with these properties:
 # * Top level directory that matches the package name
@@ -23,17 +26,25 @@ import os
 #   * hooks:  hook -> script mapping for different packing actions
 # * A data directory which contains the payload
 # * A hooks directory for any hook scripts
+# * If defaults are supplied, a "defaults.yaml" file will be
+#   installed in data/default_config/<base>.default
 #
 # Supported hooks:
 #   pre => script is run prior to installation.  Args:  installation directory
 #   post => script is run after files have been written to filesystem.  Args: installation directory
-#   config => script is run during configuraiton phase
+#   config => script is run during configuration phase
+#   start => called when the package needs to be started
+#   stop = called when the package needs to be stopped
+# when installed config, start, and stop hook scripts are stored in data/package_hooks,
+# named as <package name>__<hook_name>
 
 
-REQUIRED_META = set(('format', 'name', 'version', 'build_date', 'install_path', 'arch'))
+REQUIRED_META = {'format', 'name', 'version', 'build_date', 'install_path', 'arch'}
+ALL_HOOKS = {'pre', 'post', 'config', 'start', 'stop'}
 
-
-def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, hooks: dict=None) -> Path:
+def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, 
+                   hooks: dict=None, defaults=None, arch_specific=False,
+                   depends_on=None) -> Path:
     """Create a new package from the content in payload_dir, returning the package Path.  
        metadata keywords will go into amp_package.yaml"""
     if not destination_dir.is_dir():
@@ -42,18 +53,31 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, hoo
         raise NotADirectoryError("Payload directory needs to be a directory")
     metadata['format'] = 1  # make sure there's a format (and it's correct)
     metadata['build_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
-    if 'arch' not in metadata:
-        metadata['arch'] = platform.machine()
+    metadata['arch'] = platform.machine() if arch_specific else 'noarch'
+        
 
 
     missing_meta = REQUIRED_META.difference(set(metadata.keys()))
     if missing_meta:
         raise ValueError(f"Metadata is missing these keys: {missing_meta}")
 
+    # we need to make sure the name doesn't contain any weird characters
+    if not re.match(r'^\w+$', metadata['name']):
+        raise ValueError(f"Package name must only include A-Z, a-z, 0-9, and _")
+
     # Merge the hooks into to the metadata
     metadata['hooks'] = {}    
     for h in hooks:
         metadata['hooks'][h] = hooks[h]
+
+    # Include the dependency information
+    if not depends_on:
+        metadata['dependencies'] = []    
+    elif not isinstance(depends_on, (list, set)):
+        metadata['dependencies'] = [depends_on]
+    else:
+        metadata['dependencies'] = list(depends_on)
+
 
     # now that everything looks good, create the tarball.
     logging.info(f"Creating package for {metadata['name']} with version {metadata['version']} in {destination_dir}")
@@ -87,8 +111,14 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, hoo
             hooks_dir.mode = 0o755
             tfile.addfile(hooks_dir, None)                    
             # add each of the hooks
-            for h in hooks:
-                tfile.add(hooks[h], basename + "/hooks/" + Path(hooks[h]).name)
+            for h in ALL_HOOKS:
+                if h in hooks:
+                    tfile.add(hooks[h], basename + "/hooks/" + Path(hooks[h]).name)
+
+        # copy the defaults into the package
+        if defaults:
+            tfile.add(defaults, basename + "/defaults.yaml")
+
 
     return pkgfile
 
@@ -120,13 +150,6 @@ def validate_package(package_file: Path) -> dict:
 
 
     return metadata
-
-def correct_architecture(arch):
-    "Return true/false if the supplied architecture is compatible with what's running"
-    if arch == "noarch" or arch == platform.machine():
-        return True
-    return False
-
 
 def install_package(package, amp_root):
     "Install a package file"
@@ -161,7 +184,28 @@ def install_package(package, amp_root):
             raise Exception(f"Copying package failed: {e}")            
         os.chdir(here)
 
-        # execute any post-install hooks
+        # if there's a defaults.yaml file, install it into data/default_config/<pkg name>.default
+        defaults_file = pkgroot / "defaults.yaml"
+        defaults_name = Path(amp_root, f"data/default_config/{metadata['name']}.default")
+        if defaults_name.exists():
+            defaults_name.unlink()
+        if defaults_file.exists():
+            shutil.copyfile(defaults_file, defaults_name)
+
+        # copy the post-installation hook scripts to the data/package_hooks directory
+        hook_dir = Path(amp_root, "data/package_hooks")
+        
+        for hook in ALL_HOOKS:
+            hook_file = hook_dir / f"{metadata['name']}__{hook}"
+            # uninstall any old one
+            if hook_file.exists():
+                hook_file.unlink()
+            # install any new one
+            if hook in metadata['hooks']:
+                shutil.copyfile(pkgroot / f"hooks/{metadata['hooks'][hook]}", hook_file)
+                hook_file.chmod(0o755)
+
+        # execute the post-install hook
         if 'post' in metadata['hooks']:
             hook = pkgroot / "hooks" / metadata['hooks']['post']
             if hook.exists():
@@ -170,5 +214,88 @@ def install_package(package, amp_root):
                     subprocess.run([str(hook), str(install_path)], check=True)
                 except Exception as e:
                     raise Exception(f"Pre-install script failed: {e}")                
+        logging.info(f"Installation of {package!s} complete")
 
 
+def correct_architecture(arch):
+    "Return true/false if the supplied architecture is compatible with what's running"
+    if arch == "noarch" or arch == platform.machine():
+        return True
+    return False
+
+def newer_version(old, new):
+    "Given two version strings, compare them returning True if new is >= old"
+    # honestly, I don't care a ton about the text strings in the
+    # versions.  The only package we have that has text in it is amp_rest which
+    # uses version 0.0.1-SNAPSHOT.  
+    old = tuple([int(x) if x.isdigit() else 0 for x in old.split('.')])
+    new = tuple([int(x) if x.isdigit() else 0 for x in new.split('.')])
+    logging.debug(f"Old version: {old}, New version: {new}, result: {new >= old}")
+    return new >= old
+
+
+class PackageDB:
+    "Manage the PackageDB file which tracks package installation information"
+    def __init__(self, dbfile):
+        self.dbfile = dbfile
+
+    def __enter__(self):
+        # open the file and get the lock
+        try:
+            self.file = open(self.dbfile, "r+")
+            fcntl.lockf(self.file, fcntl.LOCK_EX)            
+            self.data = yaml.safe_load(self.file)   
+            if '__PACKAGE_DATABASE__' not in self.data or self.data['__PACKAGE_DATABASE__'].get('VERSION', 0) != 1:
+                raise ValueError(f"Package database file {self.dbfile!s} is invalid")
+        except FileNotFoundError:
+            self.file = open(self.dbfile, "w+")
+            fcntl.lockf(self.file, fcntl.LOCK_EX)
+            self.data = {'__PACKAGE_DATABASE__': {'NOTICE': 'Do not modify this file, it is programatically maintained',
+                                                  'VERSION': 1,
+                                                  'INITIALIZED': datetime.now().strftime("%Y%m%d_%H%M%S")}}   
+        return self   
+
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # write the current data back to the disk
+        self.file.seek(0, os.SEEK_SET)
+        self.file.write(yaml.safe_dump(self.data))        
+        self.file.truncate()
+        fcntl.lockf(self.file, fcntl.LOCK_UN)
+        self.file.close()
+
+
+    def install(self, name, version, dependencies=None):
+        "Install/update a package in the database"
+        if name not in self.data:
+            self.data[name] = {
+                'version': version,
+                'dependencies': dependencies,
+                'install_date': datetime.now().strftime("%Y%m%d_%H%M%S"),
+                'history': []
+            }
+        else:
+            # this is an upgrade, so push the current data into the history
+            # and update the current.
+            self.data[name]['history'].append({'version': self.data[name]['version'],
+                                               'install_date': self.data[name]['install_date']})
+            self.data[name]['version'] = version
+            self.data[name]['install_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
+            if dependencies is None:
+                dependencies = []
+            elif not isinstance(dependencies, (list, set)):
+                dependencies = [dependencies]
+            else:
+                dependencies = list(dependencies)
+            self.data[name]['dependencies'] = dependencies
+
+    def packages(self):
+        "Get a list of the installed packages"
+        return [x for x in self.data.keys() if x != '__PACKAGE_DATABASE__']
+
+    def info(self, name):
+        "Return the information for a package, or None if it isn't installed"
+        if name in self.data:
+            return self.data[name]
+        else:
+            return None
