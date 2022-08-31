@@ -30,6 +30,18 @@ def setup():
     os.environ['AMP_ROOT'] = str(Path(sys.path[0], "..").resolve().absolute())
     os.environ['AMP_DATA_ROOT'] = str(Path(sys.path[0], '../data').resolve().absolute())
 
-    # Put the amp_python container into the path 
+    # Put the amp_python container into the path
+    # (if it isn't installed yet, that isn't a problem)
     if 'amp_python' not in os.environ['PATH']:
         os.environ['PATH'] = str(Path(sys.path[0], "../amp_python").absolute()) + ":" + os.environ['PATH']
+
+    # /tmp is problematic, especially when we're building things -- especially on
+    # workstations (where /tmp may be a ramdisk) and on servers with small root
+    # filesystems.   /var/tmp is better for the workstation situation and 
+    # possibly better for servers (since the admin may have a larger /var
+    # filesystem).   To cover our bases, set temporary directories to /var/tmp
+    # if they aren't already set by the user.
+    for t in ('TMPDIR', 'TEMP', 'APPTAINER_TMPDIR', 'SINGULARITY_TMPDIR'):
+        if t not in os.environ:
+            os.environ[t] = "/var/tmp"
+
