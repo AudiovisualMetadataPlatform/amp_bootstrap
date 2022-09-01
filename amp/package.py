@@ -49,9 +49,9 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict,
     """Create a new package from the content in payload_dir, returning the package Path.  
        metadata keywords will go into amp_package.yaml"""
     if not destination_dir.is_dir():
-        raise NotADirectoryError("Destination directory needs to be a directory")
+        raise NotADirectoryError(f"Destination directory needs to be a directory: {destination_dir!s}")
     if payload_dir and not payload_dir.is_dir():
-        raise NotADirectoryError("Payload directory needs to be a directory")
+        raise NotADirectoryError(f"Payload directory needs to be a directory: {payload_dir!s}")
     
     metadata['format'] = 1  # make sure there's a format (and it's correct)
     metadata['build_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
