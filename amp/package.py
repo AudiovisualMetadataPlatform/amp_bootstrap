@@ -24,7 +24,8 @@ import fcntl
 #   * build_date: Package build date as yyyymmdd_hhmmss 
 #   * install_path: Installation directory, relative to the AMP root
 #   * hooks:  hook -> script mapping for different packing actions
-# * A data directory which contains the payload
+#   * metapackage:  true if there's no payload, just hooks and configuration
+# * A data directory which contains the payload (for non-metapackages)
 # * A hooks directory for any hook scripts
 # * If defaults are supplied, a "defaults.yaml" file will be
 #   installed in data/default_config/<base>.default
@@ -49,12 +50,13 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict,
        metadata keywords will go into amp_package.yaml"""
     if not destination_dir.is_dir():
         raise NotADirectoryError("Destination directory needs to be a directory")
-    if not payload_dir.is_dir():
+    if payload_dir and not payload_dir.is_dir():
         raise NotADirectoryError("Payload directory needs to be a directory")
+    
     metadata['format'] = 1  # make sure there's a format (and it's correct)
     metadata['build_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
     metadata['arch'] = platform.machine() if arch_specific else 'noarch'
-        
+    metadata['metapackage'] = payload_dir is None    
 
 
     missing_meta = REQUIRED_META.difference(set(metadata.keys()))
@@ -62,15 +64,18 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict,
         raise ValueError(f"Metadata is missing these keys: {missing_meta}")
 
     # we need to make sure the name doesn't contain any weird characters
-    if not re.match(r'^\w+$', metadata['name']):
-        raise ValueError(f"Package name must only include A-Z, a-z, 0-9, and _")
+    if not re.match(r'^[\w\-]+$', metadata['name']):
+        raise ValueError(f"Package name must only include A-Z, a-z, 0-9, -, and _:  {metadata['name']}")
 
     # Merge the hooks into to the metadata
+    logging.debug("Adding hooks")
     metadata['hooks'] = {}    
-    for h in hooks:
-        metadata['hooks'][h] = hooks[h]
+    if hooks:
+        for h in hooks:
+            metadata['hooks'][h] = hooks[h]
 
     # Include the dependency information
+    logging.debug("Adding dependencies")
     if not depends_on:
         metadata['dependencies'] = []    
     elif not isinstance(depends_on, (list, set)):
@@ -101,7 +106,8 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict,
 
         # grab the payload
         logging.debug(f"Pushing data from {payload_dir!s} to data in tarball")
-        tfile.add(payload_dir, f"{basename}/data", recursive=True)
+        if payload_dir:
+            tfile.add(payload_dir, f"{basename}/data", recursive=True)
 
         # grab any hooks
         if hooks:
@@ -133,13 +139,17 @@ def validate_package(package_file: Path) -> dict:
             raise ValueError("Some files in the package do not start with the package prefix")
         if basename + "/amp_package.yaml" not in pkgfiles:
             raise ValueError("Package doesn't contain metadata file")
-        if basename + "/data" not in pkgfiles:
-            raise ValueError("Package doesn't have a payload directory")
         
         # read the metadata from the archive and parse it.    
         with f.extractfile(basename + "/amp_package.yaml") as mf:
             metadata = yaml.safe_load(mf)
-    
+
+
+        if not metadata.get('metapackage', False) and basename + "/data" not in pkgfiles:
+            raise ValueError("Package doesn't have a payload directory")
+
+
+
         if 'format' not in metadata or int(metadata['format']) > 1:
             raise IOError(f"Unknown Package Format: {metadata.get('format', None)}")
 
@@ -175,14 +185,15 @@ def install_package(package, amp_root):
                     raise Exception(f"Pre-install script failed: {e}")                
 
         # copy the files from the data directory to the install_path
-        logging.debug(f"Copying files from {pkgroot / 'data'!s} to {install_path!s}")        
-        here = Path.cwd().resolve()
-        os.chdir(pkgroot / "data")
-        try:
-            subprocess.run(['cp', '-a', '.', str(install_path)], check=True)
-        except Exception as e:
-            raise Exception(f"Copying package failed: {e}")            
-        os.chdir(here)
+        if not metadata.get('metapackage', False):
+            logging.debug(f"Copying files from {pkgroot / 'data'!s} to {install_path!s}")        
+            here = Path.cwd().resolve()
+            os.chdir(pkgroot / "data")
+            try:
+                subprocess.run(['cp', '-a', '.', str(install_path)], check=True)
+            except Exception as e:
+                raise Exception(f"Copying package failed: {e}")            
+            os.chdir(here)
 
         # if there's a defaults.yaml file, install it into data/default_config/<pkg name>.default
         defaults_file = pkgroot / "defaults.yaml"
@@ -232,6 +243,30 @@ def newer_version(old, new):
     new = tuple([int(x) if x.isdigit() else 0 for x in new.split('.')])
     logging.debug(f"Old version: {old}, New version: {new}, result: {new >= old}")
     return new >= old
+
+
+def dependency_order(dbfile):
+    "Go through the package database and return a list with the least-to-most package dependency order"
+    deps = {}
+    # load the dependencies
+    with PackageDB(dbfile) as pdb:
+        for pkg in pdb.packages():
+            deps[pkg] = pdb.info(pkg)['dependencies']
+    order = []
+    while deps:
+        did_something = False
+        for pkg in list(deps.keys()):
+            if set(deps[pkg]).issubset(set(order)):
+                order.append(pkg)
+                deps.pop(pkg)
+                did_something=True
+        
+        if deps and not did_something:
+            raise ValueError(f"Cannot resolve dependencies for: {list(deps.keys())}")
+
+    return order
+
+
 
 
 class PackageDB:
