@@ -7,7 +7,7 @@ import yaml
 from pathlib import Path
 
 
-def load_amp_config(amp_root=None):
+def load_amp_config(amp_root=None, user_config=None):
     """
     Load the AMP configuration, applying all of the overlays as needed
     """
@@ -28,7 +28,7 @@ def load_amp_config(amp_root=None):
 
 
     # other packages may have left default files in the data/default_config directory -- let's find them and
-    # overlay them on the primary default file.
+    # overlay them on the primary default file. 
     for default in Path(amp_root, "data/default_config").glob("*.default"):
         try:
             with open(default) as f:
@@ -38,16 +38,29 @@ def load_amp_config(amp_root=None):
         except Exception as e:
             logging.warning(f"Cannot overlay {default!s}: {e}")
 
+    # during configuration some hard-to-recompute values may be stored in data/package_config/*.yaml
+    for default in Path(amp_root, "data/package_config").glob("*.yaml"):
+        try:
+            with open(default) as f:
+                overlay = yaml.safe_load(f)
+            _merge(config, overlay)
+            logging.debug(f"Package config after merging with {default!s}: {config}")
+        except Exception as e:
+            logging.warning(f"Cannot overlay {default!s}: {e}")
+
+
 
     # At this point we should have a full default configuration -- overlay the
     # user configuration
+    if user_config is None:
+        user_config = Path(amp_root, "amp_bootstrap/amp.yaml")
     try: 
-        with open(Path(amp_root, "amp_bootstrap/amp.yaml")) as f:
+        with open(user_config) as f:
             overlay = yaml.safe_load(f)
         _merge(config, overlay)
         logging.debug(f"Default config after merging with user config: {config}")
     except Exception as e:
-        raise IOError(f"Cannot overlay main configuration: {e}")
+        logging.warning(f"Cannot overlay main configuration ({user_config!s}): {e}")
 
     return config
 
@@ -62,7 +75,7 @@ def _merge(model, overlay, context=None):
     logging.debug(f"Merge context: {context_string()}")
     for k in overlay:
         if k not in model:
-            logging.warning(f"Adding un-modeled value: {context_string()}.{k} = {overlay[k]}")
+            logging.debug(f"Adding un-modeled value: {context_string()}.{k} = {overlay[k]}")
             model[k] = overlay[k]
         elif type(overlay[k]) is not type(model[k]):            
             if type(overlay[k]) is type(None):
