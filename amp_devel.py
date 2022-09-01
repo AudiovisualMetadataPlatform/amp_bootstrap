@@ -17,9 +17,13 @@ amp_root = Path(sys.path[0]).parent
 # development repos
 dev_repos = {
     'amppd': 'https://github.com/AudiovisualMetadataPlatform/amppd.git',
-    'amppd-ui': 'https://github.com/AudiovisualMetadataPlatform/amppd-ui.git',
+    'amppd-ui': 'https://github.com/AudiovisualMetadataPlatform/amppd-ui.git',    
+    'amp_mediaprobe': 'git@github.com:AudiovisualMetadataPlatform/amp_mediaprobe.git',
     'amp_mgms': 'https://github.com/AudiovisualMetadataPlatform/amp_mgms.git',
+    'amp_python': 'git@github.com:AudiovisualMetadataPlatform/amp_python.git',
+    'amp_tomcat': 'git@github.com:/AudiovisualMetadataPlatform/amp_tomcat.git',
     'galaxy': 'https://github.com/AudiovisualMetadataPlatform/galaxy.git',
+    'sample_mgm': 'git@github.com:AudiovisualMetadataPlatform/sample_mgm.git',
 }
 
 # development prereqs
