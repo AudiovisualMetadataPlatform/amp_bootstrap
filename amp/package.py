@@ -318,7 +318,7 @@ class PackageDB:
         if name not in self.data:
             self.data[name] = {
                 'version': version,
-                'builddate': build_date,
+                'build_date': build_date,
                 'dependencies': dependencies,
                 'install_date': datetime.now().strftime("%Y%m%d_%H%M%S"),
                 'history': []
@@ -330,7 +330,7 @@ class PackageDB:
                                                'build_date': self.data[name]['build_date'],
                                                'install_date': self.data[name]['install_date']})
             self.data[name]['version'] = version
-            self.data[name]['builddate'] = build_date
+            self.data[name]['build_date'] = build_date
             self.data[name]['install_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
             if dependencies is None:
                 dependencies = []

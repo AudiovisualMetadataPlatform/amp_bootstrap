@@ -25,7 +25,7 @@ runtime_prereqs = {
     'java': [[['java', '-version'], r'build (\d+)\.(\d+)', 'exact', (11, 0)]],
     'singularity': [[['singularity', '--version'], r'version (\d+)\.(\d+)', 'atleast', (3, 7)],
                     [['apptainer', '--version'], None, 'any']],
-    'ffmpeg': [[['ffmpeg', '--version'], None, 'any']],
+    # 'ffmpeg': [[['ffmpeg', '--version'], None, 'any']],  # This was for the old install of MediaProbe
     'file': [[['file', '--version'], None, 'any']],
     'gcc': [[['gcc', '--version'], None, 'any']],
     'git': [[['git', '--version'], None, 'any']]
