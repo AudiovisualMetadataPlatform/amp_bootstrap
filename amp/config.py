@@ -84,9 +84,14 @@ def _merge(model, overlay, context=None):
             else:
                 logging.warning(f"Skipping - type mismatch: {context_string()}.{k}:  model={type(model[k])}, overlay={type(overlay[k])}")
         elif type(overlay[k]) is dict:   
-            nc = list(context)
-            nc.append(k)         
-            _merge(model[k], overlay[k], nc)
+            if overlay[k].get('.replace', False):
+                temp = dict(overlay[k])
+                del temp['.replace']
+                model[k] = temp
+            else:
+                nc = list(context)
+                nc.append(k)         
+                _merge(model[k], overlay[k], nc)
         else:
             # everything else is replaced wholesale
             logging.debug(f"Replacing value: {context_string()}.{k}:  {model[k]} -> {overlay[k]}")
