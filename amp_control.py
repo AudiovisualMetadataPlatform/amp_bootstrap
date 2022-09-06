@@ -125,7 +125,10 @@ def action_download(config, args):
                         logging.info(f"Skipping {pkg} because the local copy is newer that remote copy  ({newpkg_time} <= {dstpkg_stat.st_mtime})")
                         continue
                 logging.info(f"Retrieving {args.url}/{pkg}")
-                urllib.request.urlretrieve(f"{args.url}/{pkg}", dest / pkg)
+                # urlretrieve will not handle cases where the content is a partial response...just
+                # call out to CURL to grab the file.  It's probably faster anyway.
+                subprocess.run(['curl', '-o', str(dest / pkg), f"{args.url}/{pkg}"], check=True)
+                #urllib.request.urlretrieve(f"{args.url}/{pkg}", dest / pkg)
     except Exception as e:
         logging.exception(f"Something went wrong: {e}")
         exit(1)
