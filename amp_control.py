@@ -69,7 +69,7 @@ def main():
     amp.environment.setup()
 
     try:        
-        if args.action in ('init', 'download', 'install'):
+        if args.action in ('init', 'download', 'install', 'configure'):
             # these don't need a valid config
             config = {}
         else:
@@ -208,15 +208,10 @@ def action_install(config, args):
 
 def action_configure(config, args): 
     "Configure the amp system"
-    if args.dump:
+    config = load_amp_config(None, None, user_defaults_only=args.dump_user) 
+    if args.dump_user or args.dump:        
         print(yaml.safe_dump(config))
         exit(0)
-
-    if args.dump_user:
-        c = load_amp_config(user_defaults_only=True)
-        print(yaml.safe_dump(c))
-        exit(0)
-
 
     # there are some cases where the configuration order is important:
     # specifically the rest stuff needs some stuff from galaxy
@@ -233,7 +228,6 @@ def action_configure(config, args):
             except Exception as e:
                 logging.error(f"Failed to configure {hookfile.name}: {e}")
                 exit(1)
-
 
 
 def action_start(config, args):
@@ -272,8 +266,6 @@ def action_stop(config, args):
 def action_restart(config, args):
     action_stop(config, args)
     action_start(config, args)
-
-
 
 
 if __name__ == "__main__":

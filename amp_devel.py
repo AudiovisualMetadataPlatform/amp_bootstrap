@@ -15,16 +15,12 @@ import sys
 amp_root = Path(sys.path[0]).parent
 
 # development repos
-dev_repos = {
-    'amppd': 'https://github.com/AudiovisualMetadataPlatform/amppd.git',
-    'amppd-ui': 'https://github.com/AudiovisualMetadataPlatform/amppd-ui.git',    
-    'amp_mediaprobe': 'git@github.com:AudiovisualMetadataPlatform/amp_mediaprobe.git',
-    'amp_mgms': 'https://github.com/AudiovisualMetadataPlatform/amp_mgms.git',
-    'amp_python': 'git@github.com:AudiovisualMetadataPlatform/amp_python.git',
-    'amp_tomcat': 'git@github.com:/AudiovisualMetadataPlatform/amp_tomcat.git',
-    'galaxy': 'https://github.com/AudiovisualMetadataPlatform/galaxy.git',
-    'sample_mgm': 'git@github.com:AudiovisualMetadataPlatform/sample_mgm.git',
-}
+dev_repos = ('amp_python', 'amp_tomcat', 'amp_mediaprobe',
+             'galaxy', 'amp_mgms',
+             'amppd', 'amppd-ui')
+
+dev_repo_base = 'https://github.com/AudiovisualMetadataPlatform'
+
 
 # development prereqs
 devel_prereqs = {
@@ -84,7 +80,7 @@ def action_init(args):
         if not repodir.exists():
             logging.info(f"Cloning {repo}")
             try:
-                subprocess.run(['git', 'clone', '--recursive', dev_repos[repo]], check=True)
+                subprocess.run(['git', 'clone', '--recursive', f"{dev_repo_base}/{repo}"], check=True)
             except Exception as e:
                 logging.error(f"Failed to clone {repo}: {e}")
                 exit(1)
