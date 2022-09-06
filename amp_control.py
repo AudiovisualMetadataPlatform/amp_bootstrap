@@ -51,6 +51,7 @@ def main():
     p.add_argument("service", help="AMP service to restart, or 'all' for all services")
     p = subp.add_parser('configure', help="Configure AMP")
     p.add_argument("--dump", default=False, action="store_true", help="Dump the configuration instead of applying it")
+    p.add_argument("--dump_user", default=False, action="store_true", help="Dump user-facing configuration")
     p = subp.add_parser('install', help="Install a package")
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
     p.add_argument('--nodeps', default=False, action="store_true", help="Ignore dependencies when installing")
@@ -188,7 +189,7 @@ def action_install(config, args):
                                 continue
                         if not args.dryrun:
                             install_package(pkgmeta['package_file'], amp_root)
-                            pdb.install(pkgname, pkgmeta['version'], pkgmeta['dependencies'])
+                            pdb.install(pkgmeta)
                         installed_packages.add(pkgname)
                         metadata.pop(pkgname)
                         did_something = True
@@ -210,6 +211,12 @@ def action_configure(config, args):
     if args.dump:
         print(yaml.safe_dump(config))
         exit(0)
+
+    if args.dump_user:
+        c = load_amp_config(user_defaults_only=True)
+        print(yaml.safe_dump(c))
+        exit(0)
+
 
     # there are some cases where the configuration order is important:
     # specifically the rest stuff needs some stuff from galaxy

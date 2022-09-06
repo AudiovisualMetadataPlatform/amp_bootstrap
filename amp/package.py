@@ -27,8 +27,10 @@ import fcntl
 #   * metapackage:  true if there's no payload, just hooks and configuration
 # * A data directory which contains the payload (for non-metapackages)
 # * A hooks directory for any hook scripts
-# * If defaults are supplied, a "defaults.yaml" file will be
-#   installed in data/default_config/<base>.default
+# * If user defaults are supplied, a "user_defaults.yaml" file will be
+#   installed in data/default_config/<base>.user_defaults
+# * If system defaults are supplied, a "system_defaults.yaml" file will be
+#   installed in data/default_config/<base>.system_defaults
 #
 # Supported hooks:
 #   pre => script is run prior to installation.  Args:  installation directory
@@ -40,12 +42,13 @@ import fcntl
 # named as <package name>__<hook_name>
 
 
-REQUIRED_META = {'format', 'name', 'version', 'build_date', 'install_path', 'arch'}
+REQUIRED_META = {'format', 'name', 'version', 'build_date', 'install_path', 'arch', 'metapackage'}
 ALL_HOOKS = {'pre', 'post', 'config', 'start', 'stop'}
 
-def create_package(destination_dir: Path, payload_dir: Path, metadata: dict, 
-                   hooks: dict=None, defaults=None, arch_specific=False,
-                   depends_on=None) -> Path:
+def create_package(name: str, version: str, install_path: str,
+                   destination_dir: Path, payload_dir: Path, 
+                   hooks: dict=None, system_defaults=None, user_defaults=None, 
+                   arch_specific=False, depends_on=None) -> Path:
     """Create a new package from the content in payload_dir, returning the package Path.  
        metadata keywords will go into amp_package.yaml"""
     if not destination_dir.is_dir():
@@ -53,15 +56,16 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict,
     if payload_dir and not payload_dir.is_dir():
         raise NotADirectoryError(f"Payload directory needs to be a directory: {payload_dir!s}")
     
-    metadata['format'] = 1  # make sure there's a format (and it's correct)
-    metadata['build_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
-    metadata['arch'] = platform.machine() if arch_specific else 'noarch'
-    metadata['metapackage'] = payload_dir is None    
-
-
-    missing_meta = REQUIRED_META.difference(set(metadata.keys()))
-    if missing_meta:
-        raise ValueError(f"Metadata is missing these keys: {missing_meta}")
+    # store the core metadata
+    metadata = {
+        'format': 1,
+        'name': name, 
+        'version': version,
+        'build_date': datetime.now().strftime("%Y%m%d_%H%M%S"),
+        'install_path': install_path,
+        'arch': platform.machine() if arch_specific else 'noarch',
+        'metapackage': payload_dir is None,
+    }
 
     # we need to make sure the name doesn't contain any weird characters
     if not re.match(r'^[\w\-]+$', metadata['name']):
@@ -122,9 +126,10 @@ def create_package(destination_dir: Path, payload_dir: Path, metadata: dict,
                     tfile.add(hooks[h], basename + "/hooks/" + Path(hooks[h]).name)
 
         # copy the defaults into the package
-        if defaults:
-            tfile.add(defaults, basename + "/defaults.yaml")
-
+        if user_defaults:
+            tfile.add(user_defaults, basename + "/user_defaults.yaml")
+        if system_defaults:
+            tfile.add(system_defaults, basename + "/system_defaults.yaml")
 
     return pkgfile
 
@@ -144,20 +149,17 @@ def validate_package(package_file: Path) -> dict:
         with f.extractfile(basename + "/amp_package.yaml") as mf:
             metadata = yaml.safe_load(mf)
 
+        if metadata['format'] == 1:
+            # make sure that all of the metadata fields are there.
+            missing_meta = REQUIRED_META.difference(set(metadata.keys()))
+            if missing_meta:
+                raise ValueError(f"Metadata is missing these keys: {missing_meta}")
 
-        if not metadata.get('metapackage', False) and basename + "/data" not in pkgfiles:
-            raise ValueError("Package doesn't have a payload directory")
+            if not metadata.get('metapackage', False) and basename + "/data" not in pkgfiles:
+                raise ValueError("Package doesn't have a payload directory")
 
-
-
-        if 'format' not in metadata or int(metadata['format']) > 1:
-            raise IOError(f"Unknown Package Format: {metadata.get('format', None)}")
-
-        # make sure that all of the metadata fields are there.
-        missing_meta = REQUIRED_META.difference(set(metadata.keys()))
-        if missing_meta:
-            raise ValueError(f"Metadata is missing these keys: {missing_meta}")
-
+        else:
+            raise IOError(f"Unsupported package format {metadata['format']}")
 
     return metadata
 
@@ -169,64 +171,70 @@ def install_package(package, amp_root):
         subprocess.run(['tar', '-C', tmpdir, '--no-same-owner', '-xf', str(package)])
         with open(pkgroot / "amp_package.yaml") as f:
             metadata = yaml.safe_load(f)
+        if metadata['format'] == 1:
+            install_path = Path(amp_root, metadata['install_path'])        
+            if not install_path.exists():
+                install_path.mkdir(parents=True)
 
-        install_path = Path(amp_root, metadata['install_path'])        
-        if not install_path.exists():
-            install_path.mkdir(parents=True)
+            # check for a pre-install hook
+            if 'pre' in metadata['hooks']:
+                hook = pkgroot / "hooks" / metadata['hooks']['pre']
+                if hook.exists():
+                    try:
+                        logging.debug(f"Running pre-install script {hook!s}")
+                        subprocess.run([str(hook), str(install_path)], check=True)
+                    except Exception as e:
+                        raise Exception(f"Pre-install script failed: {e}")                
 
-        # check for a pre-install hook
-        if 'pre' in metadata['hooks']:
-            hook = pkgroot / "hooks" / metadata['hooks']['pre']
-            if hook.exists():
+            # copy the files from the data directory to the install_path
+            if not metadata.get('metapackage', False):
+                logging.debug(f"Copying files from {pkgroot / 'data'!s} to {install_path!s}")        
+                here = Path.cwd().resolve()
+                os.chdir(pkgroot / "data")
                 try:
-                    logging.debug(f"Running pre-install script {hook!s}")
-                    subprocess.run([str(hook), str(install_path)], check=True)
+                    subprocess.run(['cp', '-a', '.', str(install_path)], check=True)
                 except Exception as e:
-                    raise Exception(f"Pre-install script failed: {e}")                
+                    raise Exception(f"Copying package failed: {e}")            
+                os.chdir(here)
 
-        # copy the files from the data directory to the install_path
-        if not metadata.get('metapackage', False):
-            logging.debug(f"Copying files from {pkgroot / 'data'!s} to {install_path!s}")        
-            here = Path.cwd().resolve()
-            os.chdir(pkgroot / "data")
-            try:
-                subprocess.run(['cp', '-a', '.', str(install_path)], check=True)
-            except Exception as e:
-                raise Exception(f"Copying package failed: {e}")            
-            os.chdir(here)
+            # if there's a user_defaults.yaml file, install it into data/default_config/<pkg name>.default
+            for dtype in ('user', 'system'):                
+                defaults_file = pkgroot / f"{dtype}_defaults.yaml"
+                defaults_name = Path(amp_root, f"data/default_config/{metadata['name']}.{dtype}_defaults")
+                if defaults_name.exists():
+                    defaults_name.unlink()
+                if defaults_file.exists():
+                    shutil.copyfile(defaults_file, defaults_name)
 
-        # if there's a defaults.yaml file, install it into data/default_config/<pkg name>.default
-        defaults_file = pkgroot / "defaults.yaml"
-        defaults_name = Path(amp_root, f"data/default_config/{metadata['name']}.default")
-        if defaults_name.exists():
-            defaults_name.unlink()
-        if defaults_file.exists():
-            shutil.copyfile(defaults_file, defaults_name)
+            # copy the post-installation hook scripts to the data/package_hooks directory
+            hook_dir = Path(amp_root, "data/package_hooks")
+            
+            for hook in ALL_HOOKS:
+                hook_file = hook_dir / f"{metadata['name']}__{hook}"
+                # uninstall any old one
+                if hook_file.exists():
+                    hook_file.unlink()
+                # install any new one
+                if hook in metadata['hooks']:
+                    shutil.copyfile(pkgroot / f"hooks/{metadata['hooks'][hook]}", hook_file)
+                    hook_file.chmod(0o755)
 
-        # copy the post-installation hook scripts to the data/package_hooks directory
-        hook_dir = Path(amp_root, "data/package_hooks")
+            # execute the post-install hook
+            if 'post' in metadata['hooks']:
+                hook = pkgroot / "hooks" / metadata['hooks']['post']
+                if hook.exists():
+                    try:
+                        logging.debug(f"Running post-install script {hook!s}")
+                        subprocess.run([str(hook), str(install_path)], check=True)
+                    except Exception as e:
+                        raise Exception(f"Pre-install script failed: {e}")                
+            logging.info(f"Installation of {package!s} complete")
+
+        else:
+            raise IOError(f"Unsupported package format {metadata['format']}")
+
+
         
-        for hook in ALL_HOOKS:
-            hook_file = hook_dir / f"{metadata['name']}__{hook}"
-            # uninstall any old one
-            if hook_file.exists():
-                hook_file.unlink()
-            # install any new one
-            if hook in metadata['hooks']:
-                shutil.copyfile(pkgroot / f"hooks/{metadata['hooks'][hook]}", hook_file)
-                hook_file.chmod(0o755)
-
-        # execute the post-install hook
-        if 'post' in metadata['hooks']:
-            hook = pkgroot / "hooks" / metadata['hooks']['post']
-            if hook.exists():
-                try:
-                    logging.debug(f"Running post-install script {hook!s}")
-                    subprocess.run([str(hook), str(install_path)], check=True)
-                except Exception as e:
-                    raise Exception(f"Pre-install script failed: {e}")                
-        logging.info(f"Installation of {package!s} complete")
-
 
 def correct_architecture(arch):
     "Return true/false if the supplied architecture is compatible with what's running"
@@ -300,11 +308,17 @@ class PackageDB:
         self.file.close()
 
 
-    def install(self, name, version, dependencies=None):
+    def install(self, metadata):
         "Install/update a package in the database"
+        name = metadata['name']
+        version = metadata['version']
+        build_date = metadata['build_date']
+        dependencies = metadata['dependencies']
+
         if name not in self.data:
             self.data[name] = {
                 'version': version,
+                'builddate': build_date,
                 'dependencies': dependencies,
                 'install_date': datetime.now().strftime("%Y%m%d_%H%M%S"),
                 'history': []
@@ -313,8 +327,10 @@ class PackageDB:
             # this is an upgrade, so push the current data into the history
             # and update the current.
             self.data[name]['history'].append({'version': self.data[name]['version'],
+                                               'build_date': self.data[name]['build_date'],
                                                'install_date': self.data[name]['install_date']})
             self.data[name]['version'] = version
+            self.data[name]['builddate'] = build_date
             self.data[name]['install_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
             if dependencies is None:
                 dependencies = []
