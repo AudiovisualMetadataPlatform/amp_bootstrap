@@ -1101,9 +1101,18 @@ after the stop/configure/start
 
 # Lessons Learned / Future Directions
 
+## Integrate proof of concept into main
+Most of the changes in the POC do not impact the non-packaging parts of 
+amp, so this should be integrated.
+
+## Separate user config defaults and system config defaults
+Defaults should probably be split into user and system sets when
+packaging.  By separating the two we can generate a basic user
+configuration that doesn't carry over all of the internal stuff.
+
 ## MGM Cleanup
 Our MGMs still need a lot of cleanup and standardization.   There's some
-less-than-optimal code that's going to make maintance hard
+less-than-optimal code that makes maintance hard
 
 ## MGMs should probably be installed one-directory-per-package
 This would make things easier to manage from a packaging perspective.
@@ -1119,7 +1128,15 @@ evaluation metadata/config, etc.
 Not sure if it's possible to replace an entire data structure in
 some cases rather than just mixing it in.
 
+Maybe have a '.replace' key in the dict metadata that indicates that this
+dictionary is to entirely replace the existing dictionary, rather than
+being merged
+
 ## Managing the toolbox is still kinda hard
 This may be a case for a simple command line tool to manage the toolbox
-settings.  The config file would live in data/package_config 
+settings.  The config file would live in data/package_config?  Splitting
+the user/system config will go a a long way to making it easier
 
+## Generate the computed configuration as a static file?
+Might be useful for the REST back end to be able to look up things in
+the combined configuration.  
