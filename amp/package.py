@@ -74,9 +74,11 @@ def create_package(name: str, version: str, install_path: str,
     # Merge the hooks into to the metadata
     logging.debug("Adding hooks")
     metadata['hooks'] = {}    
+    hookfiles = {}
     if hooks:
         for h in hooks:
-            metadata['hooks'][h] = hooks[h]
+            metadata['hooks'][h] = Path(hooks[h]).name
+            hookfiles[h] = hooks[h]
 
     # Include the dependency information
     logging.debug("Adding dependencies")
@@ -123,7 +125,7 @@ def create_package(name: str, version: str, install_path: str,
             # add each of the hooks
             for h in ALL_HOOKS:
                 if h in hooks:
-                    tfile.add(hooks[h], basename + "/hooks/" + Path(hooks[h]).name)
+                    tfile.add(hookfiles[h], basename + "/hooks/" + Path(hooks[h]).name)
 
         # copy the defaults into the package
         if user_defaults:
