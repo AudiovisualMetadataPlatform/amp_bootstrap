@@ -1,8 +1,4 @@
 ---
-amp_bootstrap:
-    # configuration for the AMP bootstrap    
-    
-
 amp:
     # This is overall configuration -- things that apply to all components
     

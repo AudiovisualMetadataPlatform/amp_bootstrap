@@ -40,18 +40,24 @@ def main():
     subp.required = True
     p = subp.add_parser('init', help="Initialize the AMP installation")
     p.add_argument("--force", default=False, action="store_true", help="Force a reinitialization of the environment")    
+    
     p = subp.add_parser('download', help='Download AMP packages')
     p.add_argument('url', help="URL amp packages directory")
     p.add_argument('dest', default=str(amp_root / 'packages'), help=f"Destination directory for packages (default {amp_root / 'packages'})")
+    
     p = subp.add_parser('start', help="Start one or more services")
     p.add_argument("service", help="AMP service to start, or 'all' for all services")
+    
     p = subp.add_parser('stop', help="Stop one or more services")
     p.add_argument("service", help="AMP service to stop, or 'all' for all services")
+    
     p = subp.add_parser('restart', help="Restart one or more services")
     p.add_argument("service", help="AMP service to restart, or 'all' for all services")
+    
     p = subp.add_parser('configure', help="Configure AMP")
-    p.add_argument("--dump", default=False, action="store_true", help="Dump the configuration instead of applying it")
-    p.add_argument("--dump_user", default=False, action="store_true", help="Dump user-facing configuration")
+    p.add_argument("--dump", default=False, action="store_true", help="Dump the computed configuration instead of applying it")
+    p.add_argument("--user_config", type=str, help="Generate a sample user configuration")
+    
     p = subp.add_parser('install', help="Install a package")
     p.add_argument('--yes', default=False, action="store_true", help="Automatically answer yes to questions")
     p.add_argument('--nodeps', default=False, action="store_true", help="Ignore dependencies when installing")
@@ -189,6 +195,7 @@ def action_install(config, args):
                         if not args.yes:
                             if input("Continue? ").lower() not in ('y', 'yes'):
                                 logging.info("Skipping package")
+                                metadata.pop(pkgname)
                                 continue
                         if not args.dryrun:
                             install_package(pkgmeta['package_file'], amp_root)
@@ -211,10 +218,15 @@ def action_install(config, args):
 
 def action_configure(config, args): 
     "Configure the amp system"
-    config = load_amp_config(None, None, user_defaults_only=args.dump_user) 
-    if args.dump_user or args.dump:        
+    config = load_amp_config(None, None, user_defaults_only=args.user_config) 
+    if args.dump:        
         print(yaml.safe_dump(config))
         exit(0)
+
+    if args.user_config:
+        logging.info(f"Writing default user configuration to {args.user_config}")
+        with open(args.user_config, "w") as f:
+            yaml.safe_dump(config, f)
 
     # there are some cases where the configuration order is important:
     # specifically the rest stuff needs some stuff from galaxy

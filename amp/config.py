@@ -57,17 +57,17 @@ def load_amp_config(amp_root=None, user_config=None, user_defaults_only=False):
             except Exception as e:
                 logging.warning(f"Cannot overlay {default!s}: {e}")
 
-        # At this point we should have a full default configuration -- overlay the
-        # user configuration
-        if user_config is None:
-            user_config = Path(amp_root, "amp_bootstrap/amp.yaml")
-        try: 
-            with open(user_config) as f:
-                overlay = yaml.safe_load(f)
-            _merge(config, overlay)
-            logging.debug(f"Default config after merging with user config: {config}")
-        except Exception as e:
-            logging.warning(f"Cannot overlay main configuration ({user_config!s}): {e}")
+    # At this point we should have a full default configuration -- overlay the
+    # user configuration
+    if user_config is None:
+        user_config = Path(amp_root, "amp_bootstrap/amp.yaml")
+    try: 
+        with open(user_config) as f:
+            overlay = yaml.safe_load(f)
+        _merge(config, overlay)
+        logging.debug(f"Default config after merging with user config: {config}")
+    except Exception as e:
+        logging.warning(f"Cannot overlay main configuration ({user_config!s}): {e}")
 
     return config
 
