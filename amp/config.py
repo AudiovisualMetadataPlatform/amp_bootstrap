@@ -46,7 +46,7 @@ def load_amp_config(amp_root=None, user_config=None, user_defaults_only=False):
             except Exception as e:
                 logging.warning(f"Cannot overlay {default!s}: {e}")
 
-    # during configuration some hard-to-recompute values may be stored in data/package_config/*.yaml
+    # during configuration some hard-to-recompute and runtime values may be stored in data/package_config/*.yaml
     if not user_defaults_only:
         for default in Path(amp_root, "data/package_config").glob("*.yaml"):
             try:

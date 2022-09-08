@@ -21,7 +21,7 @@ amp:
 
 
     # All of the data is relative to the installation directory.
-    data_root: data
+    #data_root: data
 
 
 
