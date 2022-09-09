@@ -1,6 +1,14 @@
-# Ansible Setup
-These setup scripts can be used to create a usable AMP installation for development (and maybe production?)
-instead of manually configuring an installation.
+# Ansible System Setup
+These setup scripts can be used to create a usable OS environment for 
+using and developing AMP.
+
+This can be used on a VM or a physical system.  If you are using a VM, any 
+hypervisor should work since this operates at the OS level
+
+# System requirements
+
+
+
 
 ## Base VM setup
 
@@ -43,8 +51,6 @@ Boot the ISO and Install Rocky Linux with these options:
   * User name = amp
   * Make this user administrator
   * Set the password to something strong
-
-
 
 
 ## AMP environment setup
