@@ -36,12 +36,9 @@ def main():
     # make a pile of changes (mostly snagged from the container amp_entry.py)!
     config['galaxy']['admin_username'] = 'ampuser@example.edu'
     config['galaxy']['admin_password'] = gen_garbage(12)
-    config['galaxy']['id_secret'] = gen_garbage(25)
     config['galaxy']['host'] = None  # bind to all interfaces
     config['mgms']['hmgm']['auth_key'] = gen_garbage(32)
     config['rest']['admin_password'] = gen_garbage(12)
-    config['rest']['encryption_secret'] = gen_garbage(14)
-    config['rest']['jwt_secret'] = gen_garbage(15)
     config['rest']['db_name'] = 'amp'
     config['rest']['db_user'] = 'amp'
     config['rest']['db_pass'] = ansible_config['amp_db_password']
