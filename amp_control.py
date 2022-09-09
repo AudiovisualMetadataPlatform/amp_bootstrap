@@ -21,7 +21,7 @@ amp_root = Path(sys.path[0]).parent
 packagedb = amp_root / "packagedb.yaml"
 
 runtime_prereqs = {
-    'python': [[['python3', '--version'], r'Python (\d+)\.(\d+)', 'between', (3, 7), (3, 9)]],
+    'python': [[['python3', '--version'], r'Python (\d+)\.(\d+)', 'between', (3, 6), (3, 9)]],
     'java': [[['java', '-version'], r'build (\d+)\.(\d+)', 'exact', (11, 0)]],
     'singularity': [[['singularity', '--version'], r'version (\d+)\.(\d+)', 'atleast', (3, 7)],
                     [['apptainer', '--version'], None, 'any']],
