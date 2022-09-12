@@ -220,13 +220,13 @@ def action_configure(config, args):
     "Configure the amp system"
     config = load_amp_config(None, None, user_defaults_only=args.user_config) 
     if args.dump:        
-        print(yaml.safe_dump(config))
+        print(yaml.safe_dump(config, default_flow_style=False))
         exit(0)
 
     if args.user_config:
         logging.info(f"Writing default user configuration to {args.user_config}")
         with open(args.user_config, "w") as f:
-            yaml.safe_dump(config, f)
+            yaml.safe_dump(config, f, default_flow_style=False)
 
     # there are some cases where the configuration order is important:
     # specifically the rest stuff needs some stuff from galaxy
