@@ -8,6 +8,7 @@ import random
 
 # the name of the new configuration file
 new_config = Path(sys.path[0], '../amp.yaml')
+ansible_settings_file = Path(sys.path[0], "settings.yml")
 
 # Use the common AMP libraries to generate a default User configuration
 sys.path.insert(0, sys.path[0] + "/..")
@@ -24,7 +25,7 @@ def main():
     # get the configuration from the ansible setup
     # this is really only the database password
     try:
-        with open(Path(sys.path[0], "settings.yml")) as f:
+        with open(ansible_settings_file) as f:
             ansible_config = yaml.safe_load(f)
     except:
         ansible_config = {
