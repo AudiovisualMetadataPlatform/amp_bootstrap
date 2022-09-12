@@ -93,6 +93,11 @@ For the remainder of this section of the documentation, assume:
 * Everything is done using the amp system user
 
 
+An overview of the AMP lifecycle:
+
+![An overview of the AMP lifecycle](./docs/lifecycle.dot.png)
+
+
 ## Initialize AMP
 First of all needs the directory structures to be initialized.  
 ```
