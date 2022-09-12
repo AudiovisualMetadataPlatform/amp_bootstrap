@@ -111,7 +111,7 @@ def build_package(srcdir, destdir, pkgname, version=None, install_path=None ):
             metadata['install_path'] = install_path
 
         with open(workdir / "amp_package.yaml", "w") as f:
-            yaml.safe_dump(metadata, f)
+            yaml.safe_dump(metadata, f, default_flow_style=False)
 
         # copy any configuration and install scripts to the root of the package
         for script in ('amp_configure.py', 'amp_install.py'):

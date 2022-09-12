@@ -93,7 +93,7 @@ def test_config():
     default['rest']['db_pass'] = gen_garbage(32)
 
     with open(DATA_ROOT / "amp.yaml", "w") as f:
-        yaml.safe_dump(default, f)
+        yaml.safe_dump(default, f, default_flow_style=False)
 
     logging.warning("A new configuration has been generated.  Update the configuration and restart the container")
     exit(0)

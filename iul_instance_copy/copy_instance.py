@@ -36,7 +36,7 @@ def main():
         logging.info("Migrating Galaxy Service")
         migrate_galaxy(amp_config, Path(args.galaxy_dir), Path(args.managed_dir))
 
-        logging.info("Configuration file:\n" + yaml.safe_dump(amp_config))
+        logging.info("Configuration file:\n" + yaml.safe_dump(amp_config, default_flow_style=False))
 
 
     except Exception as e:

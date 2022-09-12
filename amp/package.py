@@ -104,7 +104,7 @@ def create_package(name: str, version: str, install_path: str,
 
         # write metadata file
         metafile = tarfile.TarInfo(name=f"{basename}/amp_package.yaml")
-        metafile_data = yaml.safe_dump(metadata).encode('utf-8')
+        metafile_data = yaml.safe_dump(metadata, default_flow_style=False).encode('utf-8')
         metafile.size = len(metafile_data)
         metafile.mtime = int(time.time())
         metafile.mode = 0o644
@@ -304,7 +304,7 @@ class PackageDB:
     def __exit__(self, exc_type, exc_val, exc_tb):
         # write the current data back to the disk
         self.file.seek(0, os.SEEK_SET)
-        self.file.write(yaml.safe_dump(self.data))        
+        self.file.write(yaml.safe_dump(self.data, default_flow_style=False))        
         self.file.truncate()
         fcntl.lockf(self.file, fcntl.LOCK_UN)
         self.file.close()
