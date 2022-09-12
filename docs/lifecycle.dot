@@ -1,0 +1,66 @@
+digraph {
+    label = "AMP Lifecycle";
+    graph [
+        labelloc = t,
+        fontsize = 12,
+        fontname = "Helvetica",
+        rankdir = LR
+    ];
+    node [
+        shape = "rectangle",
+        fontname = "Helvetica",
+        fontsize = 8,
+        margin = 0.05,
+    ];
+    edge [
+        fontname = "Helvetica",
+        fontsize = 8,
+    ];
+
+    clone [label = "Clone\namp_bootstrap"];
+    init [label = "Initialize\ninstance"];
+    download [label = "Download\npackages"];
+    install [label = "Install\npackages"];
+    gen_user [label = "Generate\nUser\nConfig"];
+    edit_config [label = "Edit \nConfiguration"];
+    configure [label = "Configure"];
+    stop [label = "Stop AMP"];
+    start [label = "Start AMP"];
+    stopped [label = "AMP is\nstopped"];
+
+    q_new_packages [label="New Packages?"];
+    q_new_config [label="New configuration?"];
+
+
+    // normal operation
+    stopped -> clone [label="Create New\nInstance"];
+    clone -> init -> download -> install;
+    install -> gen_user -> edit_config -> configure;
+    configure -> start;
+
+    // system startup
+    stopped -> q_new_packages [label="Start\nExisting"];
+    q_new_packages -> download [label="Remote"];
+    q_new_packages -> install [label="Local"];
+    q_new_packages -> q_new_config [label="No"];
+    q_new_config -> edit_config [label="Yes"];
+    q_new_config -> start [label="No"];
+    
+    start -> stop [label="Reconfig\nor stop"];
+    stopped -> stop [dir=back];
+
+    // initialize dev env
+    init_dev [label="Initialize\nDevel Env"];
+    start -> init_dev [label="Create\nDevel\nEnv"];
+    init_dev -> modify_code;
+
+    // do development    
+    modify_code [label="Modify\nCode"];
+    build_repository [label="Build\nPackage"];
+    start -> modify_code [label="Do\nDevel"];
+    modify_code -> build_repository;
+    build_repository -> stop;
+
+
+
+}
