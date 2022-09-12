@@ -34,6 +34,9 @@ def main():
     config = load_amp_config(None, None, True)
 
     # make a pile of changes (mostly snagged from the container amp_entry.py)!
+    for n in ('galaxy', 'mgms', 'rest'):
+        config[n] = {}
+    config['mgms']['hmgm'] = {}
     config['galaxy']['admin_username'] = 'ampuser@example.edu'
     config['galaxy']['admin_password'] = gen_garbage(12)
     config['galaxy']['host'] = None  # bind to all interfaces
