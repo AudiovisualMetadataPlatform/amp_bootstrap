@@ -7,12 +7,7 @@ hypervisor should work since this operates at the OS level
 
 # System requirements
 
-
-
-
-## Base VM setup
-
-### The VM itself
+## The VM itself
 
 Create a VM using whatever environment suits you -- since this works on the OS level any hypervisor
 should work.
@@ -25,7 +20,7 @@ You'll probably want at least these specs:
   * xGB for data files
   * 30GB for development (at least 150G for container dev)
 
-### Base operating system install
+# Base operating system install
 
 For IU development we've been using Rocky Linux 8 as our OS.  
 
@@ -53,7 +48,7 @@ Boot the ISO and Install Rocky Linux with these options:
   * Set the password to something strong
 
 
-## AMP environment setup
+# AMP environment setup
 
 This repository has the scripts needed to install all of the
 requirements for AMP and set up the OS.

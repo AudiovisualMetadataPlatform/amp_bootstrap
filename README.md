@@ -95,7 +95,7 @@ For the remainder of this section of the documentation, assume:
 
 An overview of the AMP lifecycle:
 
-![An overview of the AMP lifecycle](./docs/lifecycle.dot.png)
+![An overview of the AMP lifecycle](./docs/resources/lifecycle.dot.png)
 
 
 ## Initialize AMP
@@ -355,4 +355,4 @@ the order required.
 
 # Developing AMP
 Information about developing the AMP codebase or adding your own packages can be
-found [here](./docs/developing.md)
+found [here](./docs/development/developing.md)
