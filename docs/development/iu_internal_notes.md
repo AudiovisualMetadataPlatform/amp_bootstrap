@@ -149,9 +149,9 @@ is (logged into the VM as the AMP user):
 
 * `cd amp_bootstrap`
 * `./amp_control.py init`
-* Acquire the packages:
-    * `./amp_control.py download https://dlib.indiana.edu/AMP-packages/new_packages ../packages`  
-    * OR, you can build them from scratch (see below)
+* Acquire the packages.  Either:
+    * Download pre-built packages `./amp_control.py download https://dlib.indiana.edu/AMP-packages/new_packages ../packages`  
+    * Or use the instructions below (Build AMP packages from scratch) to build a set of packages from scratch
 * `./amp_control.py install ../packages/*.tar --yes`
 * `./amp_control.py configure --user_config amp.yaml`
 
