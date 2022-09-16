@@ -145,7 +145,7 @@ Enter 'y' for each of the packages.
 NOTE: packages should be installed only when the system is stopped.
 
 A record of the installations is kept in AMP_ROOT/packagedb.yaml.  This file
-is human-readable but is maintaine by the software, so do not modify it.
+is human-readable but is maintained by the software, so do not modify it.
 
 # Configure AMP
 Once the system requirements are installed, the AMP system needs to be
