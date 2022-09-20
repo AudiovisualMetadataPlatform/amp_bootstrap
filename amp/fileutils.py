@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import os
 
 def read_json_file(input_file):
     "Read/parse the given JSON input_file and return the validated JSON dictionary"
@@ -26,4 +27,11 @@ def valid_file(file):
     "Return True if the file exists and the size is nonzero"
     file = Path(file)
     return file.exists() and file.stat().st_size > 0
-    
+
+def create_empty_file(file):
+    "Create an empty file or truncate it if it exists"
+    file = Path(file)
+    if file.exists():
+        os.truncate(file)
+    else:
+        file.touch()
