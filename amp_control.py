@@ -98,7 +98,7 @@ def action_init(config, args):
     "Create the directories needed for AMP to do it's thing"    
     # create a bunch of directories we can populate later...
     for n in ('packages', 'data', 'data/symlinks', 'data/config', 'data/default_config',              
-              'data/package_hooks', 'data/package_config'):
+              'data/package_hooks', 'data/package_config', 'data/work'):
         d = amp_root / n
         if not d.exists():
             logging.info(f"Creating {d!s}")

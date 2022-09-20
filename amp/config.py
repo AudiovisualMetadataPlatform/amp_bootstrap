@@ -6,6 +6,22 @@ import os
 import yaml
 from pathlib import Path
 
+def get_amp_root():
+    "Get the amp_root, based on the environment"
+    if 'AMP_ROOT' in os.environ:
+        return os.environ['AMP_ROOT']
+    else:
+        raise IOError("Cannot figure out where the AMP_ROOT is!")
+    
+
+def get_amp_data():
+    "Get the amp data directory based on the environment"
+    if 'AMP_DATA_ROOT' in os.environ:
+        return os.environ['AMP_DATA_ROOT']
+    else:
+        amp_root = get_amp_root()
+        return amp_root + "/data"
+
 
 def load_amp_config(amp_root=None, user_config=None, user_defaults_only=False):
     """
@@ -16,10 +32,7 @@ def load_amp_config(amp_root=None, user_config=None, user_defaults_only=False):
     can be used to create a user default configuration file.
     """
     if amp_root is None:
-        if 'AMP_ROOT' in os.environ:
-            amp_root = os.environ['AMP_ROOT']
-        else:
-            raise IOError("Cannot figure out where the AMP_ROOT is!")
+        amp_root = get_amp_root()
 
     # the base file for all overlays is in amp_bootstrap/amp.default  
     default_file = Path(amp_root, 'amp_bootstrap/amp.default')
@@ -115,6 +128,16 @@ def get_config_value(config, keylist, default=None):
         return default
 
 def get_cloud_credentials(config, provider):
-    "Return credentials for the given cloud provider"
+    "Return credentials for the given cloud provider from the configuration"
     return get_config_value(config, ['cloud', provider])
     
+
+def get_work_dir(work_dir):
+    "Return the path to the MGM's 'work' directory which persists across multiple calls"
+    # Work directories should probably be somewhere in the data tree since 
+    # they're writable at runtime.
+    amp_work = Path(get_amp_data(), "work", work_dir)
+    if not amp_work.exists():
+        logging.info(f"Creating work directory: {amp_work!s}")
+        amp_work.mkdir(parents=True, exist_ok=True)
+    return str(amp_work.absolute())
