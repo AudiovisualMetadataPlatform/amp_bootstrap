@@ -1,6 +1,7 @@
 # File utilities
 
 import json
+from pathlib import Path
 
 def read_json_file(input_file):
     "Read/parse the given JSON input_file and return the validated JSON dictionary"
@@ -19,3 +20,10 @@ def write_text_file(string, output_file):
     "Write the given string to the given text output_file"
     with open(output_file, 'w', encoding='utf8') as file:
         file.write(string)
+
+
+def valid_file(file):
+    "Return True if the file exists and the size is nonzero"
+    file = Path(file)
+    return file.exists() and file.stat().st_size > 0
+    
