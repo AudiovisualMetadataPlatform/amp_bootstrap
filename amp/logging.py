@@ -23,7 +23,7 @@ class TimedRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
 
 def setup_logging(basename: str, debug: bool):
     "Setup the logging subsystem.  If basename is None no persistent log will be created"
-    logging_level = logging.DEBUG if debug else logging.INFO
+    logging_level = logging.DEBUG if debug or 'AMP_DEBUG' in os.environ else logging.INFO
     formatter = logging.Formatter("%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d:%(process)d)  %(message)s")
 
     logger = logging.getLogger()
