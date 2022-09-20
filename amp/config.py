@@ -114,3 +114,7 @@ def get_config_value(config, keylist, default=None):
     else:
         return default
 
+def get_cloud_credentials(config, provider):
+    "Return credentials for the given cloud provider"
+    return get_config_value(config, ['cloud', provider])
+    
