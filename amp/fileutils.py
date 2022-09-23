@@ -1,9 +1,14 @@
 # File utilities
 
 import json
-import jsonschema
 from pathlib import Path
 import os
+import logging
+
+# Big note here -- jsonschema is only loaded if it is actually used, so 
+# things that can't be run under amp_python.sif will still work, minus
+# that functionality.
+
 
 def read_json_file(input_file, schema=None):
     "Read/parse the given JSON input_file and return the validated JSON dictionary"
@@ -24,7 +29,11 @@ def validate_schema(data, schema):
     "Validate the data against the supplied schema"
     if schema is None:
         return
-    jsonschema.validate(data, schema)
+    try:
+        import jsonschema
+        jsonschema.validate(data, schema)
+    except ImportError:
+        logging.warning("Cannot load jsonschema, skipping validation")
 
 
 def write_text_file(string, output_file):
