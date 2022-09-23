@@ -1,7 +1,6 @@
 # File utilities
 
 import json
-import jsonschema
 from pathlib import Path
 import os
 import logging
