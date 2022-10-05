@@ -41,7 +41,7 @@ VNC server that the VM provides.   On modern operating systems, this tunnel
 can be created by running this command in a terminal:
 
 ```
-ssh -L 5900:$SERVICEROOT/vnc-socket -N $VMHOST
+ssh -L 5900:$SERVICEROOT/vnc-socket -N $HOSTUSER@$VMHOST
 ```
 
 As long as this program is running the VM's console can be accessed via the
