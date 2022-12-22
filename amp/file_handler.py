@@ -2,17 +2,11 @@ import csv
 from os.path import exists
 from pathlib import Path
 import logging, json
+from itertools import chain
 
 def create_csv_from_dict(filename, data):
     logging.info(f"Creating file {filename}")
-    longestlen = 0
-    longestlenindex = 0
-    for i, t in enumerate(data):
-        if len(t) > longestlen:
-            longestlen = len(t)
-            longestlenindex = i
-    if len(data[longestlenindex]) > 0:
-        fieldnames = data[longestlenindex].keys()
+    fieldnames = list(set(chain.from_iterable(sub.keys() for sub in data)))
     writer = csv.DictWriter(open(filename, 'w'), fieldnames=fieldnames)
     writer.writeheader()
     for d in data:
