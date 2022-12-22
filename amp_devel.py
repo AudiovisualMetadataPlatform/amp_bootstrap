@@ -17,7 +17,7 @@ amp_root = Path(sys.path[0]).parent
 # development repos
 dev_repos = ('amp_python', 'amp_tomcat', 'amp_mediaprobe',
              'galaxy', 'amp_mgms',
-             'amppd', 'amppd-ui')
+             'amppd', 'amppd-ui', 'mgm-evaluation-scripts')
 
 dev_repo_base = 'https://github.com/AudiovisualMetadataPlatform'
 
