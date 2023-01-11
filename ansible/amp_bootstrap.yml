@@ -34,7 +34,7 @@
         - java-11-openjdk-devel
         - "@Development Tools"
         - dnf-plugins-core
-        - singularity
+        - apptainer
         - podman
         - maven
         - postfix
