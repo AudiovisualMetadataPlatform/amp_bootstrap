@@ -30,6 +30,7 @@
   - name: Base dependencies
     yum:
       name:
+        - firewalld
         - java-11-openjdk
         - java-11-openjdk-devel
         - "@Development Tools"
