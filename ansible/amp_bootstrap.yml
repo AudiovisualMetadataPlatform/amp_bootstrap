@@ -30,6 +30,8 @@
   - name: Base dependencies
     yum:
       name:
+        - "@Server"
+        - "@Headless Management"
         - firewalld
         - java-11-openjdk
         - java-11-openjdk-devel
