@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Update everything
+sudo dnf update -y
+
 # Install EPEL
 sudo dnf install -y epel-release
 
