@@ -13,8 +13,8 @@ set -e
 mkdir -p /srv/amp || /bin/true
 cd /srv/amp
 
-# Update the singularity path to bind /srv/amp when running
-echo "bind path = /srv/amp" >> /etc/singularity/singularity.conf
+# Update the apptainer path to bind /srv/amp when running
+echo "bind path = /srv/amp" >> /etc/apptainer/apptainer.conf
 
 # No need to open the firewall
 

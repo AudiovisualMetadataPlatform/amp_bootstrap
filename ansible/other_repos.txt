@@ -24,7 +24,7 @@ Python 2.7 which has been out of service for years)
 
 * the gentle mgm won't build
 
-The default singularity script won't work because it defines the haswell 
+The default apptainer script won't work because it defines the haswell 
 architecture for openblas, and that's not an ARM thing.  It also wants to
 install the nvidia-cuda-dev package, which doesn't make sense on ARM.  
 
@@ -35,7 +35,7 @@ good things
 ---
 * java 11, node 14 are there and work
 * amppd repo builds on RL8 on aarch64
-* singularity builds /do/ grab the correct architecture from dockerhub
+* apptainer builds /do/ grab the correct architecture from dockerhub
 * visual studio code will work with a remote aarch64 machine (specifically, a raspberry pi)
 * mgm_python.sif builds and works when I tested it.
 * gentle will not build because it wants cuda

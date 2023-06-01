@@ -41,7 +41,7 @@ def setup():
     # possibly better for servers (since the admin may have a larger /var
     # filesystem).   To cover our bases, set temporary directories to /var/tmp
     # if they aren't already set by the user.
-    for t in ('TMPDIR', 'TEMP', 'APPTAINER_TMPDIR', 'SINGULARITY_TMPDIR'):
+    for t in ('TMPDIR', 'TEMP', 'APPTAINER_TMPDIR'):
         if t not in os.environ:
             os.environ[t] = "/var/tmp"
 

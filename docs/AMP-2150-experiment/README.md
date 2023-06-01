@@ -254,7 +254,7 @@ in the bootstrap) can expect include:
 * A PYTHONPATH which includes the AMP standard library
 * AMP_ROOT and AMP_DATA_ROOT pointing to the current installation
 * amp_python.sif at the head of the PATH
-* TMPDIR, TEMP, APPTAINER_TMPDIR, and SINGULARITY_TMPDIR pointing
+* TMPDIR, TEMP, APPTAINER_TMPDIR, and APPTAINER_TMPDIR pointing
   to /var/tmp (to avoid out of memory issues on systems which use
   a ramdisk for /tmp)
 
@@ -331,8 +331,7 @@ script needs:
 runtime_prereqs = {
     'python': [[['python3', '--version'], r'Python (\d+)\.(\d+)', 'between', (3, 7), (3, 9)]],
     'java': [[['java', '-version'], r'build (\d+)\.(\d+)', 'exact', (11, 0)]],
-    'singularity': [[['singularity', '--version'], r'version (\d+)\.(\d+)', 'atleast', (3, 7)],
-                    [['apptainer', '--version'], None, 'any']],
+    'singularit': [[['apptainer', '--version'], None, 'any']],
     'ffmpeg': [[['ffmpeg', '--version'], None, 'any']],
     'file': [[['file', '--version'], None, 'any']],
     'gcc': [[['gcc', '--version'], None, 'any']],
