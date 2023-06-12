@@ -4,12 +4,16 @@ class FaceRecognition:
         if media is None:
             self.media = FaceRecognitionMedia()
         else:
-            self.media = media
+            self.media = FaceRecognitionMedia.from_json(media)
         if frames is None:
             self.frames = []
         else:
             self.frames = frames
-             
+
+    @classmethod
+    def from_json(cls, json_data):
+        return cls(**json_data)
+
 class FaceRecognitionMedia:
     def __init__(self, filename = "", duration = 0, frameRate = 0, numFrames = 0, resolution = None):
         self.filename = filename
