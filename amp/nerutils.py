@@ -51,8 +51,8 @@ def populate_amp_entities(amp_transcript_obj, ner_entities_list, amp_entities_ob
                 mgm = "AWS"
                 type = entity["Type"]
                 text = entity["Text"]
-                beginOffset = entity["BeginOffset"]
-                endOffset = entity["EndOffset"]
+                beginOffset = entity["BeginOffset"] - 1
+                endOffset = entity["EndOffset"] - 1
                 scoreType = "relevance"
                 scoreValue = entity["Score"]
             else: 
@@ -64,7 +64,7 @@ def populate_amp_entities(amp_transcript_obj, ner_entities_list, amp_entities_ob
                 scoreType = None
                 scoreValue = None
             end = None
-            
+            logging.info(f"Entity {mgm}: {type} '{text}'@{beginOffset}-{endOffset}")
             # skip entity in the ignore categories
             if clean_type(type) in ignore_types_list:
                 ignored = ignored + 1
@@ -75,6 +75,7 @@ def populate_amp_entities(amp_transcript_obj, ner_entities_list, amp_entities_ob
             # we can assume that both AMP Transcript words and NER Entities are sorted in the time/offset order        
             for i in range(last+1, lenw):
                 # find a match by offset
+                logging.info(f"Word {i}: '{words[i].text}'@{words[i].offset}")
                 if words[i].offset == beginOffset:
                     textamp = words[i].text
                     # check if text match, note that entity could be multi-words, so we need to check if it starts with the matching word
@@ -83,9 +84,9 @@ def populate_amp_entities(amp_transcript_obj, ner_entities_list, amp_entities_ob
                         logging.warning(f"Warning: output {mgm} Entity {text} does not start with input AMP Transcript words[{i}] = {textamp}, even though both start at offset {beginOffset}.")
                     last = i
                     break
-                # reached the end of words list, match not found
-                else:
-                    last = lenw
+            # reached the end of words list, match not found
+            else:
+                last = lenw
                 
             # if reached end of words list and no matched word is found for current entity, no need to match the rest of entities
             if last == lenw:
