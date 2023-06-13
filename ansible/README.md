@@ -16,10 +16,10 @@ You'll probably want at least these specs:
 * 8GB RAM
 * 2 CPU
 * Disk:
-  * 20GB for operating system and AMP software
-  * xGB for data files
-  * 30GB for development (at least 150G for container dev)
-
+  * 80G disk for basic deployment or development
+  * Plus however large you expect your data to be
+  * For container development add at least 80G
+  
 # Base operating system install
 
 For IU development we've been using Rocky Linux 8 as our OS.  
@@ -30,7 +30,16 @@ Download the Rocky Linux 8 Minimal ISO from https://rockylinux.org/download
 
 Boot the ISO and Install Rocky Linux with these options:
 * Installation Destination:
-  * Accept the default partitioning by just pressing "Done"
+  * Select 'custom'
+  * Click "click here to create them automatically"
+  * Select "/"
+    * Modify the desired capacity to 15GiB
+    * Click "Update Settings"
+  * Select "/home"
+    * Modify the desired capacity to something larger than the actual disk (i.e. 99GiB for an 80G disk) and it will set it to the maximum
+    * Click "Update Settings"   
+  * Accept the custom partitioning by just pressing "Done"
+    * Accept changes by pressing "Accept Changes"
   * AMP will be installed in /home/amp if you wish to modify the configuration
 * Network & Hostname
   * Connect the network device

@@ -16,9 +16,9 @@ For an OS installation, AMP requires these resources, but more is better:
 * 8GB RAM
 * 2 CPU
 * Disk:
-  * 20GB for operating system and AMP software
-  * xGB for data files
-  * 30GB for development (at least 150G for container dev)
+  * 80GB for operating system and AMP software
+  * plus xGB for data files
+  * plus 30GB for development (at least 150G for container dev)
 
 Running AMP has these software requirements:
 * RHEL 8-compatible OS
