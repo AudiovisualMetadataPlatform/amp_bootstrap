@@ -13,9 +13,9 @@ dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free
 dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm
 dnf install -y ffmpeg
 
-# Singularity from EPEL
+# apptainer from EPEL
 dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-dnf install -y singularity
+dnf install -y apptainer
 
 ## PostgreSQL 12 from upstream
 #dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm

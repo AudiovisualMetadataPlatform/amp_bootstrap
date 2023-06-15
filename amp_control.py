@@ -23,8 +23,7 @@ packagedb = amp_root / "packagedb.yaml"
 runtime_prereqs = {
     'python': [[['python3', '--version'], r'Python (\d+)\.(\d+)', 'between', (3, 6), (3, 9)]],
     'java': [[['java', '-version'], r'build (\d+)\.(\d+)', 'exact', (11, 0)]],
-    'singularity': [[['apptainer', '--version'], None, 'any'],
-                    [['singularity', '--version'], r'version (\d+)\.(\d+)', 'atleast', (3, 7)]],
+    'apptainer': [[['apptainer', '--version'], None, 'any']],
     # 'ffmpeg': [[['ffmpeg', '--version'], None, 'any']],  # This was for the old install of MediaProbe
     'file': [[['file', '--version'], None, 'any']],
     'gcc': [[['gcc', '--version'], None, 'any']],
@@ -98,7 +97,7 @@ def action_init(config, args):
     "Create the directories needed for AMP to do it's thing"    
     # create a bunch of directories we can populate later...
     for n in ('packages', 'data', 'data/symlinks', 'data/config', 'data/default_config',              
-              'data/package_hooks', 'data/package_config'):
+              'data/package_hooks', 'data/package_config', 'data/work'):
         d = amp_root / n
         if not d.exists():
             logging.info(f"Creating {d!s}")

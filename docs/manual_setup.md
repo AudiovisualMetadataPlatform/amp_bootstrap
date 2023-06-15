@@ -7,7 +7,7 @@ As root, install the system dependencies:
 ```
 dnf install -y python39 python39-pyyaml java-11-openjdk git
 dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-yum install -y singularity
+yum install -y apptainer
 dnf config-manager --set-enabled powertools
 dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
 dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm
@@ -58,10 +58,10 @@ useradd -m amp
 passwd amp
 ```
 
-### Singularity binding
+### apptainer binding
 If the AMP installation path is not within the amp user's home directory, 
-singularity containers may fail to start.  To resolve this issue, add the 
-"bind path" to /etc/singularity/singularity.conf
+apptainer containers may fail to start.  To resolve this issue, add the 
+"bind path" to /etc/apptainer/apptainer.conf
 
 ## Open the firewall
 Most Linux distributions firewall ports by default.  Open the firewall for the 

@@ -25,7 +25,7 @@ Running AMP has these software requirements:
 * 3.6 >= Python >= 3.9
 * PyYaml
 * Java Runtime 11
-* Singularity runtime 3.8 or Apptainer runtime 1.0
+* Apptainer runtime 1.0
 * PostgreSQL >= 12
 * Git
 * ffmpeg

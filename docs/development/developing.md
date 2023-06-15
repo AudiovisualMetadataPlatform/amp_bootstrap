@@ -162,7 +162,7 @@ Generally you want to follow these guidelines:
 * Use amp_python.sif as your interpreter.  That contains python 3.10 with lots
   of standard packages, as well as a handful of common tools (ffmpeg, sox, etc)
 * If you need something more complex than what amp_python.sif can provide, 
-  create a singularity container instead
+  create a apptainer container instead
 * Use the Python modules in the amp namespace (which are provided in the
   bootstrap repository) whereever possible.
 
