@@ -1,8 +1,10 @@
 
 import logging
 from amp.schema.entity_extraction import EntityExtraction, EntityExtractionMedia
-from amp.schema.speech_to_text import SpeechToText
-from amp.fileutils import read_json_file, write_json_file
+#from amp.schema.speech_to_text import SpeechToText
+from amp.fileutils import write_json_file
+from amp.schema.transcript import Transcript
+from amp.schema.entities import Entities
 
 # Shared helper methods for NER MGMs
 
@@ -15,7 +17,7 @@ def initialize_amp_entities(amp_transcript, amp_entities, ignore_types):
 
     # parse input AMP Transcript JSON file into amp_transcript object
     try:
-        amp_transcript_obj = SpeechToText().from_json(read_json_file(amp_transcript))
+        amp_transcript_obj = Transcript.load(amp_transcript)
     except Exception:
         logging.exception(f"Exception while parsing AMP Transcript {amp_transcript}:")
         raise
