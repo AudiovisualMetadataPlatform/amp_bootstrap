@@ -105,6 +105,56 @@ def populate_amp_entities(amp_transcript_obj, ner_entities_list, amp_entities_ob
     logging.info(f"Among all {lene} {mgm} entities, {lena} are successfully populated into AMP Entities, {ignored} are ignored, {lene-lena-ignored} are unmatched.")
     
 
+# Populate entities in output AMP entities object, based on the input AMP transcript object, the output NER entities list, and the ignored categories.
+# THIS is a rewrite since the other one does really weird things.
+def populate_amp_entities2(amp_transcript_obj, ner_entities_list, amp_entities_obj, ignore_types_list):
+    # first, build an offset table that converts an transcript offset to an audio time offset
+    offsets = {x.offset: x.start for x in amp_transcript_obj.results.words}
+    stats = {'total': 0, 'ignored': 0, 'matched': 0, 'unknown': 0}    
+    for entity in ner_entities_list:
+        stats['total'] += 1
+        try:
+            # This code absolutely belongs in the MGM in question, not in a
+            # utilities library.  
+            if isinstance(entity, dict):
+                mgm = "AWS"
+                type = entity["Type"]
+                text = entity["Text"]
+                beginOffset = entity["BeginOffset"] - 1
+                endOffset = entity["EndOffset"] - 1
+                scoreType = "relevance"
+                scoreValue = entity["Score"]
+            else: 
+                mgm = "Spacy"
+                type = entity.label_
+                text = entity.text
+                beginOffset = entity.start_char
+                endOffset = entity.end_char
+                scoreType = None
+                scoreValue = None            
+            logging.info(f"Entity {mgm}: {type} '{text}'@{beginOffset}-{endOffset}")
+            # skip entity in the ignore categories
+            if clean_type(type) in ignore_types_list:
+                stats['ignored'] += 1
+                logging.info(f"Ignoring entity {text} of type {type}.")
+                continue
+
+            if beginOffset not in offsets:
+                stats['unknown'] += 1
+                logging.warning(f"No matching word for offset {beginOffset}")
+                # drop more info here                
+            else:
+                stats['matched'] += 1
+                amp_entities_obj.addEntity(type, text, beginOffset, endOffset, offsets[beginOffset], None, scoreType, scoreValue)
+    
+        except Exception:
+            # in case of exception, most likely due to missing fields, skip the entity in error and continue with the rest
+            logging.exception("Error: Exception while processing {mgm} entity {text} at offset {begineOffset}")
+            
+    logging.info(f"Among all {stats['total']} {mgm} entities, {stats['matched']} are successfully populated into AMP Entities, {stats['ignored']} are ignored, {stats['unknown']} are unmatched.")
+ 
+
+
 # Extract a list of cleaned entity types from the given comma separated ignore_types string. 
 def extract_ignore_types(ignore_types):    
     return list(map(clean_type, ignore_types.split(',')))
