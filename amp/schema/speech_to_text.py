@@ -114,7 +114,7 @@ class SpeechToTextWord:
 			score = json_data['score']
 			scoreValue = score['value']
 			scoreType = score['type']
-		return cls(json_data['type'], json_data['text'], json_data['offset'], start, end, scoreType, scoreValue)
+		return cls(json_data['type'], json_data['text'], json_data.get('offset', 0), start, end, scoreType, scoreValue)
 
 
 class SpeechToTextScore:
