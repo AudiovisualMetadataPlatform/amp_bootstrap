@@ -65,6 +65,9 @@ def main():
     p.add_argument('--dryrun', default=False, action="store_true", help="Don't actually install the packages")
     p.add_argument("package", nargs="+", help="Package file(s) to install")    
 
+    p = subp.add_parser('version', help="List installed package versions")
+
+
     args = parser.parse_args()
     logging.basicConfig(format="%(asctime)s [%(levelname)-8s] (%(filename)s:%(lineno)d)  %(message)s",
                         level=logging.DEBUG if args.debug else logging.INFO)
@@ -146,6 +149,7 @@ def action_install(config, args):
         print(f"  Name: {metadata['name']}")
         print(f"  Version: {metadata['version']}")
         print(f"  Build date: {metadata['build_date']}")
+        print(f"  Build revision: {metadata.get('build_revision', 'No revision')}")
         print(f"  Architecture: {metadata['arch']}")
         print(f"  Dependencies: {metadata['dependencies']}")                
         print(f"  Installation path: {install_path if install_path else 'AMP_ROOT/' + metadata['install_path']!s}")
@@ -277,10 +281,52 @@ def action_stop(config, args):
                 logging.error(f"Failed to start {hookfile.name}: {e}")
                 exit(1)
 
+
 def action_restart(config, args):
     action_stop(config, args)
     action_start(config, args)
 
+
+def action_version(config, args):
+    # get the information for the bootstrap
+    info = {'amp_bootstrap': {'version': 'N/A', 
+                              'build_date': 'None', 
+                              'build_revision': git_info(sys.path[0])}}
+
+    # get the rest of the package data
+    with PackageDB(amp_root / "packagedb.yaml") as p:
+        for pkg in p.packages():
+            i = p.info(pkg)
+            info[pkg] = {'version': i['version'],
+                        'build_date': i['build_date'],
+                        'build_revision': i.get('build_revision', 'No revision')}
+
+        lengths = {'package': max([len(p) for p in info])}
+        for x in info['amp_bootstrap'].keys():
+            lengths[x] = max([len(x), *[len(info[p].get(x, '')) for p in info.keys()]])
+
+        # print column headers
+        for l in lengths:
+            print((l + (' ' * lengths[l]))[0:lengths[l]], '  ', end='')
+        print()
+        # print column bars
+        for l in lengths:
+            print(('-' * lengths[l]), '  ', end='')
+        print()
+
+        # print the data
+        for p in sorted(info.keys()):
+            print((p + " " * lengths['package'])[0:lengths['package']], '  ', end='')
+            for l in info[p].keys():
+                print((info[p][l] + (' ' * lengths[l]))[0:lengths[l]], '  ', end='')
+            print()
+
+
+
+
+
+    
+    
 
 if __name__ == "__main__":
     main()

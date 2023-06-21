@@ -104,7 +104,7 @@ def action_build(args):
         if not repo.is_dir() or not (repo / "amp_build.py").exists():
             logging.warning(f"Skipping {repo!s} since it doesn't appear to be a valid repo")
             continue
-            
+        os.environ['AMP_SRC_DIR'] = str(repo.absolute())
         here = os.getcwd()
         os.chdir(repo)
         logging.info(f"Building packages for {repo.name}")

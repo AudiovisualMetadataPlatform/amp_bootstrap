@@ -48,7 +48,7 @@ ALL_HOOKS = {'pre', 'post', 'config', 'start', 'stop'}
 def create_package(name: str, version: str, install_path: str,
                    destination_dir: Path, payload_dir: Path, 
                    hooks: dict=None, system_defaults=None, user_defaults=None, 
-                   arch_specific=False, depends_on=None) -> Path:
+                   arch_specific=False, depends_on=None, src_path=None) -> Path:
     """Create a new package from the content in payload_dir, returning the package Path.  
        metadata keywords will go into amp_package.yaml"""
     if not destination_dir.is_dir():
@@ -56,12 +56,23 @@ def create_package(name: str, version: str, install_path: str,
     if payload_dir and not payload_dir.is_dir():
         raise NotADirectoryError(f"Payload directory needs to be a directory: {payload_dir!s}")
     
+    # try to determine build revision
+    if src_path is None:
+        # amp_devel.py will set AMP_SRC_DIR when building 
+        if 'AMP_SRC_DIR' in os.environ:
+            src_path = os.environ['AMP_SRC_DIR']
+        # check for a .git directory in the current directory
+        elif Path('.git').exists(): 
+            src_path = os.getcwd()
+        # any other places?
+
     # store the core metadata
     metadata = {
         'format': 1,
         'name': name, 
         'version': version,
         'build_date': datetime.now().strftime("%Y%m%d_%H%M%S"),
+        'build_revision': "Cannot find source path" if src_path is None else git_info(src_path),
         'install_path': install_path,
         'arch': platform.machine() if arch_specific else 'noarch',
         'metapackage': payload_dir is None,
@@ -277,6 +288,25 @@ def dependency_order(dbfile):
     return order
 
 
+def git_info(repopath):
+    "Get the git information for a given repository"
+    here = os.getcwd()
+    os.chdir(repopath)    
+    if Path(".git").exists():
+        p = subprocess.run(['git', 'branch', '--show-current'], stdout=subprocess.PIPE, encoding='utf-8')
+        branch = p.stdout.strip()
+        p = subprocess.run(['git', 'log', "--pretty=format:'%h'", '-n', '1'], stdout=subprocess.PIPE, encoding='utf-8')
+        commit = p.stdout.replace("'", '').strip()
+        p = subprocess.run(['git', 'diff', '--name-only'], stdout=subprocess.PIPE, encoding='utf-8')
+        # package-lock.json gets updated on every build so we just ignore it.
+        changed = len(p.stdout.replace('package-lock.json', '').strip()) != 0
+        info = f"Branch: {branch}, Commit: {commit}{'' if not changed else ', Uncommited Changes'}"
+    
+    else:
+        info = "Not a git repo"
+
+    os.chdir(here)
+    return info
 
 
 class PackageDB:
@@ -315,12 +345,14 @@ class PackageDB:
         name = metadata['name']
         version = metadata['version']
         build_date = metadata['build_date']
+        build_revision = metadata.get('build_revision', 'No revisiion')
         dependencies = metadata['dependencies']
 
         if name not in self.data:
             self.data[name] = {
                 'version': version,
                 'build_date': build_date,
+                'build_revision': build_revision,
                 'dependencies': dependencies,
                 'install_date': datetime.now().strftime("%Y%m%d_%H%M%S"),
                 'history': []
@@ -330,9 +362,11 @@ class PackageDB:
             # and update the current.
             self.data[name]['history'].append({'version': self.data[name]['version'],
                                                'build_date': self.data[name]['build_date'],
-                                               'install_date': self.data[name]['install_date']})
+                                               'install_date': self.data[name]['install_date'],
+                                               'build_revision': self.data[name].get('build_revision', 'No revision')})
             self.data[name]['version'] = version
             self.data[name]['build_date'] = build_date
+            self.data[name]['build_revision'] = build_revision
             self.data[name]['install_date'] = datetime.now().strftime("%Y%m%d_%H%M%S")
             if dependencies is None:
                 dependencies = []
