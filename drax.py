@@ -17,7 +17,7 @@ import hashlib
 # random intermittent outages and possible breakage.
 
 # time for the packages to settle before doing an install
-SETTLE_TIME = 15 * 60
+SETTLE_TIME = 5 * 60
 
 def main():
     parser = argparse.ArgumentParser()
@@ -39,7 +39,8 @@ def main():
         last_run_file = pkg_dir / ".last_run"
         last_run = 0 if not last_run_file.exists() else last_run_file.stat().st_mtime
         
-        packages = []        
+        packages = []      
+        newest = 0
         logging.debug(f"Scanning for packages newer than {last_run}")
         for pfile in pkg_dir.glob("*.tar"):
             ptime = pfile.stat().st_mtime            
@@ -48,11 +49,17 @@ def main():
                 #if args.now or time.time() - SETTLE_TIME > ptime:                    
                 #    logging.debug(f"Package file {pfile!s} has settled")
                 packages.append(pfile)
-            
+                newest = max(newest, ptime)
+
         if packages:
             last_run_file.touch(exist_ok=True)
             logging.info(f"New packages are available: {[str(x) for x in packages]}")
             
+            # wait to settle.
+            logging.info(f"Waiting until {newest + SETTLE_TIME} for packages to settle. It's now {time.time()}")
+            while newest + SETTLE_TIME < time.time():
+                time.sleep(10)
+
             logging.info(f"Shutting down AMP")            
             run(['./amp_control.py', 'stop', 'all'], check=True)
 
