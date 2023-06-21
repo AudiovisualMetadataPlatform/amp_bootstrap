@@ -45,9 +45,9 @@ def main():
             ptime = pfile.stat().st_mtime            
             if ptime > last_run:
                 logging.debug(f"{pfile!s} has time {ptime}")                
-                if args.now or time.time() - SETTLE_TIME > ptime:                    
-                    logging.debug(f"Package file {pfile!s} has settled")
-                    packages.append(pfile)
+                #if args.now or time.time() - SETTLE_TIME > ptime:                    
+                #    logging.debug(f"Package file {pfile!s} has settled")
+                packages.append(pfile)
             
         if packages:
             last_run_file.touch(exist_ok=True)
