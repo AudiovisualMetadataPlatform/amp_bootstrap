@@ -57,7 +57,7 @@ def main():
             
             # wait to settle.
             logging.info(f"Waiting until {newest + SETTLE_TIME} for packages to settle. It's now {time.time()}")
-            while newest + SETTLE_TIME < time.time():
+            while time.time() < newest + SETTLE_TIME:
                 time.sleep(10)
 
             logging.info(f"Shutting down AMP")            
