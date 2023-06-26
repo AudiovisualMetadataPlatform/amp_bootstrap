@@ -82,6 +82,22 @@ def load_amp_config(amp_root=None, user_config=None, user_defaults_only=False):
     except Exception as e:
         logging.warning(f"Cannot overlay main configuration ({user_config!s}): {e}")
 
+    # One last thing -- generate the external URL from what we know (if it's not
+    # explicitly set)
+    if 'external_url' not in config['amp']:
+        scheme = 'http://'
+        host = config['amp']['host']
+        port = config['amp']['port']
+        if config['amp']['https']:
+            scheme = 'https://'
+            if port != 443:
+                port = ':' + str(port)
+        else:
+            if port != 80:
+                port = ':' + str(port)
+
+        config['amp']['external_url'] = f"{scheme}{host}{port}"
+
     return config
 
 def _merge(model, overlay, context=None):
