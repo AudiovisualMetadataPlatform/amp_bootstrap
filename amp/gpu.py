@@ -69,7 +69,7 @@ class ExclusiveGPU:
         else:
             # we didn't break out of the loop -- so we timed out
             raise TimeoutError(f"GPU never became available in {self.timeout} seconds")
-
+        return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if self.lockfile.exists():
