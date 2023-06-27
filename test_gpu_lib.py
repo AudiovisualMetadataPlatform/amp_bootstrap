@@ -1,7 +1,7 @@
 #!/bin/env python3
 from amp.gpu import get_gpus, has_gpu, ExclusiveGPU
 import logging
-
+from pathlib import Path
 
 # test the functions
 logging.basicConfig(level=logging.DEBUG)
