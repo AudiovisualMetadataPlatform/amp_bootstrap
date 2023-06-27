@@ -28,14 +28,29 @@ def has_gpu(type: None):
     
 
 class ExclusiveGPU:
-    def __init__(self, device, timeout=60*60*24*365, period=10):
-        "Wait for exclusive access to a GPU device"
+    def __init__(self, vendor, device=None, timeout=60*60*24*365, period=10):
+        """Wait for exclusive access to a GPU device.  if the device is none 
+           then the first available will be used.  The name can be found
+           via the .name property"""
+        gpus = get_gpus()
+        if vendor not in gpus:
+            raise ModuleNotFoundError(f"There are no gpus with vendor {vendor}")
+        
+        if device is None:
+            # determine if there's a free device.  
+            # TODO: pick a free device.  in the mean time we're just going to pick the first device.
+            device = gpus[vendor][0]
+        elif device not in gpus[vendor]:
+            raise FileNotFoundError(f"No GPU with device name {device}")
+        
         device = Path(device)
         if not device.exists():
             raise FileNotFoundError(f"GPU device at {device!s} doesn't exist")                
         self.lockfile = Path("/tmp", "gpu-" + device.name + ".lock")
         self.timeout = timeout
         self.period = period
+        self.name = device
+
 
     def __enter__(self):        
         timeout = time.time() + self.timeout()
