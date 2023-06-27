@@ -54,7 +54,7 @@ class ExclusiveGPU:
 
 
     def __enter__(self):        
-        timeout = time.time() + self.timeout()
+        timeout = time.time() + self.timeout
         while time.time() < timeout:
             try:
                 logging.debug(f"Attempting to lock {self.lockfile!s}")
