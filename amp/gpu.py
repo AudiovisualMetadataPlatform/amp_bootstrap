@@ -62,6 +62,7 @@ class ExclusiveGPU:
                 os.write(fd, str(os.getpid()).encode("utf-8"))
                 os.close(fd)
                 logging.debug("Lock successful")
+                break
             except Exception:
                 logging.debug(f"Can't lock.  Waiting for {self.period} seconds")
                 time.sleep(self.period)
