@@ -6,6 +6,7 @@ import time
 import os
 import logging
 
+
 def get_gpus():
     "Return a dict of GPU types and devices"
     devs = {}
@@ -13,16 +14,16 @@ def get_gpus():
         for dev in Path("/dev").glob("nvidia[0-9]"):
             if 'nvidia' not in devs:
                 devs['nvidia'] = []
-            devs['nvidia'].append(dev.name)
+            devs['nvidia'].append(str(dev.absolute))
     # TODO: there should be checks for AMD and Intel GPUs
     return devs
 
 
-def has_gpu(type: None):
-    "Determine if a GPU (of an optional type) is on this system"
+def has_gpu(vendor: None):
+    "Determine if a GPU (of an optional vendor) is on this system"
     devs = get_gpus()
-    if type:
-        return type in devs
+    if vendor:
+        return vendor in devs
     else:
         return len(devs) > 0
     
