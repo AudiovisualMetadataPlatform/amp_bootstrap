@@ -14,7 +14,7 @@ def get_gpus():
         for dev in Path("/dev").glob("nvidia[0-9]"):
             if 'nvidia' not in devs:
                 devs['nvidia'] = []
-            devs['nvidia'].append(str(dev.absolute))
+            devs['nvidia'].append(str(dev.absolute()))
     # TODO: there should be checks for AMD and Intel GPUs
     return devs
 
