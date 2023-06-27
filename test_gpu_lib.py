@@ -1,3 +1,4 @@
+#!/bin/env python3
 from amp.gpu import get_gpus, has_gpu, ExclusiveGPU
 import logging
 
