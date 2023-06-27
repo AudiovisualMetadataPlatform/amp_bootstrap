@@ -19,7 +19,7 @@ def get_gpus():
     return devs
 
 
-def has_gpu(vendor: None):
+def has_gpu(vendor=None):
     "Determine if a GPU (of an optional vendor) is on this system"
     devs = get_gpus()
     if vendor:
