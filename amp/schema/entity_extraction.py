@@ -91,6 +91,9 @@ class EntityExtractionEntityScore:
 		self.value = value
 	@classmethod
 	def from_json(cls, json_data: dict):
-		return cls(**json_data)
+		if json_data is None:
+			return cls(None, None)
+		else:
+			return cls(**json_data)
 
 
