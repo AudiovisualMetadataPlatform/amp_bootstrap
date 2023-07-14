@@ -108,6 +108,29 @@ class Annotations:
         })
 
 
+    def filter(self, start: float=None, end: float=None, atype=None, invert=False):
+        "Filter annotations and return them"
+        results = []
+        for a in self.data['annotations']:
+            keep = True            
+            if start is not None and a['start'] < start:
+                keep = False
+            if end is not None and a['end'] > end:
+                keep = False
+            if atype is not None:
+                if type(atype) == str and a['type'] != atype:
+                    keep = False
+                elif type(atype) in (list, set) and a['type'] not in atype:
+                    keep = False
+            if invert:
+                keep = not keep
+            if keep:
+                results.append(a)
+        return results
+
+
+
+
     def merge(self, other):
         "Merge the other annotation into this one"
         for other_mgm in other.data['mgms']:
@@ -134,9 +157,6 @@ class Annotations:
                     self.data['annotations'].append(t)
 
 
-
-
-        
     def _new_mgmid(self):
         "Generate a new MGM id"
         i = 0
