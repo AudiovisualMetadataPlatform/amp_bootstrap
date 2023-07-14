@@ -7,11 +7,25 @@ from time import time
 import subprocess
 import json
 import logging
+import copy
 
 class Annotations:
-    def __init__(self, annotation_file, media_file,
-                 mgm_name, mgm_version, params: dict):
-        "Load or Create an annotation file"
+    def __init__(self, annotation_file, media_file=None,
+                 mgm_name=None, mgm_version=None, params: dict=None,
+                 load_only=False):
+        "Load or Create an annotation file"        
+        self.load_only = load_only
+        if load_only:
+            # don't contruct anything, just load it and save it
+            self.data = read_json_file(annotation_file)
+            return
+        
+        assert media_file is not None, "Media file must be specified"
+        assert mgm_name is not None, "MGM name must be specified" 
+        assert mgm_version is not None, "MGM version must be specified"
+        if params is None:
+            params = {}
+        
         media_file = Path(media_file)
         if annotation_file is None or not Path(annotation_file).exists():
             # create an empty one.                    
@@ -60,10 +74,7 @@ class Annotations:
             self.data = read_json_file(annotation_file)
         
         # add this mgm.
-        i = 0
-        while f'mgm{i}' in self.data['mgms']:
-            i += 1
-        self.mgm_id = f'mgm{i}'
+        self.mgm_id = self._new_mgmid() 
         self.data['mgms'][self.mgm_id] = {
             'name': mgm_name,
             'version': mgm_version,
@@ -75,7 +86,10 @@ class Annotations:
 
     def save(self, filename):
         "save the annotations file"
-        self.data['mgms'][self.mgm_id]['end'] = time()
+        if not self.load_only:
+            # don't update the mgm end time
+            self.data['mgms'][self.mgm_id]['end'] = time()
+
         # sort annotations by start time to get an accurate picture of what's going on
         self.data['annotations'] = sorted(self.data['annotations'], key=lambda x: x['start'])
         # TODO: check against a schema
@@ -92,3 +106,40 @@ class Annotations:
             'annotation_type': annotation_type,
             'details': details
         })
+
+
+    def merge(self, other):
+        "Merge the other annotation into this one"
+        for other_mgm in other.data['mgms']:
+            # if this MGM is the exact same as an MGM we already have
+            # then we skip it because we have those annotations
+            duplicate_mgm = False
+            for smgm in self.data['mgms']:
+                if self.data['mgms'][smgm] == other.data['mgms'][other_mgm]:
+                    logging.info(f"Our MGM {smgm} is the same as the merging MGM {other_mgm}: skipping")
+                    duplicate_mgm = True
+                    break
+            if duplicate_mgm:
+                continue
+            
+            newid = self._new_mgmid()
+            logging.info(f"Copying annotations for MGM {other_mgm} as {newid}")
+            # copy the MGM
+            self.data['mgms'][newid] = copy.deepcopy(other.data['mgms'][other_mgm])
+            # copy the annotations
+            for anno in other.data['annotations']:
+                if anno['mgm'] == other_mgm:
+                    t = copy.deepcopy(anno)
+                    t['mgm'] = newid
+                    self.data['annotations'].append(t)
+
+
+
+
+        
+    def _new_mgmid(self):
+        "Generate a new MGM id"
+        i = 0
+        while f'mgm{i}' in self.data['mgms']:
+            i += 1
+        return f"mgm{i}"
