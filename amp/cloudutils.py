@@ -10,7 +10,7 @@ def generate_persistent_name(prefix, *data):
     #    part = ''.join(x if x in ok_chars else '_' for x in str(p))
     #    parts.append(part)
     #name += "-".join(parts)
-    return name + "-" + hashlib.md5('_'.join(data).encode()).hexdigest()
+    return name + "-" + hashlib.md5('_'.join([str(x) for x in data]).encode()).hexdigest()
     
 
 
