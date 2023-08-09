@@ -67,7 +67,10 @@ def main():
             run(['git', 'pull'])
 
             logging.info(f"Installing the packages")
-            run(['./amp_control.py', 'install',  '--yes', *[str(x.absolute()) for x in packages]], check=True)
+            for pkg in packages:
+                p = run(['./amp_control.py', 'install',  '--yes', str(pkg.absolute())])
+                if p.returncode != 0:
+                    logging.warning(f"Could not install {pkg.absolute()!s}")
 
             logging.info(f"Update the configuration")
             run(['./amp_control.py', 'configure'], check=True)
