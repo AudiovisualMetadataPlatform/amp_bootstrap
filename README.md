@@ -2,126 +2,52 @@
 The AMP Bootstrap provides the utilities needed to install/configure/manage
 an AMP installation
 
-If you are running in a containerized environment, the documentation in
-[container/README.md](./container/README.md) contains the details for
-building and running an AMP container.
+# Dependency Installation
+AMP is designed to be installed on a fresh physical or virtual server.
 
-The rest of this document assumes that you're installing in a 
-bare-metal or VM environment.
+When provisioning the server, these minimums must be met:
+* 4 CPU cores
+* 8G RAM
+* Disk space:
+  * 100G for deployment and development
+  * Add the size of the data you expect to process
 
-# AMP System Requirements
+Once provisioned, use the steps in
+[Ansible Installation Instructions](./ansible/README.md) 
+to install the operating system and AMP dependencies
 
-For an OS installation, AMP requires these resources, but more is better:
+# Setting up the AMP software
+The steps below assume:
+* The server is running
+* The admin is logged in as the `amp` user
+* `$AMP_ROOT` is where this repository has been cloned (it should be `/home/amp`)
+* The current directory is `$AMP_ROOT/amp_bootstrap`
 
-* 8GB RAM
-* 2 CPU
-* Disk:
-  * 80GB for operating system and AMP software
-  * plus xGB for data files
-  * plus 30GB for development (at least 150G for container dev)
-
-Running AMP has these software requirements:
-* RHEL 8-compatible OS
-* 3.6 >= Python >= 3.9
-* PyYaml
-* Java Runtime 11
-* Apptainer runtime 1.0
-* PostgreSQL >= 12
-* Git
-* ffmpeg
-* gcc, zlib, and other development libraries
-
-Additional requirements for AMP development:
-* node 14
-* JDK 11
-* wget
-* make
-
-AMP has been developed using Rocky Linux 8 and should be compatible with
-all other RHEL 8 compatible distributions.  Other distributions might be
-easily compatible (Fedora, for example), but others will likely be more
-difficult (Debian-based distros) but likely possible.
-
-
-You can use ansible to set up an AMP-compatible environment by using the
-[Ansible Installation Instructions](./ansible/README.md).  That process has
-been tested on fresh RHEL 8 installs, but it should also work on existing
-RHEL 8 installations.  It will not work on non-RHEL 8 distributions.
-
-The environment can also be set up [manually](./docs/manual_setup.md).
-
-
-# Managing AMP
-After all of the system requirements have been installed (either manually or
-via ansible) and the amp_bootstrap repository has been cloned into the amp 
-user's home directory, the AMP system is ready for management.
-
-The amp_control.py tool provides the functionality needed to manage the AMP
-system, from downloading the AMP packages to starting/stopping the system.
-
-Information about the options for amp control can be obtained by using the
-`--help` argument on the tool:
-
-```
-$ ./amp_control --help
-usage: amp_control.py [-h] [--debug] [--config CONFIG] {init,download,start,stop,restart,configure,install} ...
-
-positional arguments:
-  {init,download,start,stop,restart,configure,install}
-                        Program action
-    init                Initialize the AMP installation
-    download            Download AMP packages
-    start               Start one or more services
-    stop                Stop one or more services
-    restart             Restart one or more services
-    configure           Configure AMP
-    install             Install a package
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --debug               Turn on debugging
-  --config CONFIG       Configuration file to use
-
-```
-
-
-For the remainder of this section of the documentation, assume:
-* AMP_ROOT is the location where the amp_bootstrap was cloned.  Usually this
-  is the amp user's home directory
-* The current directory is the amp_bootstrap.  You should be able to get
-  there by running `cd ~/amp_bootstrap`
-* Everything is done using the amp system user
-
-
-An overview of the AMP lifecycle:
-
-![An overview of the AMP lifecycle](./docs/resources/lifecycle.dot.png)
-
-
-## Initialize AMP
-First of all needs the directory structures to be initialized.  
+## Initializing the AMP environment
+AMP requires certain directory structures to be present prior to running.  This
+command will create them:
 ```
 ./amp_control.py init
 ```
-
 This process only needs to be done once, but it is safe to run additional
 times.
 
-# Download the AMP packages
-AMP packages are files containing pre-built versions of the AMP software 
-components.  These packages can be obtained from 
-https://dlib.indiana.edu/AMP-packages/current
 
-The amp_control.py tool can be used to download these packages from the site to
-the AMP_ROOT/packages directory.  This may take some time because there is more
-than 14G of package data
+## Downloading AMP packages
+The AMP software itself is distributed in package form to allow users to 
+update the software in a controlled fashion. 
 
+The release packages can be downloaded using
 ```
-./amp_control.py download https://dlib.indiana.edu/AMP-packages/current ../packages
+./amp_control.py download https://dlib.indiana.edu/AMP-packages/1.0.0 ../packages
 ```
+The version 1.0.0 release is roughly 10G, so it will take some time to download.
 
-# Install packages
-Once the packages are downloaded, they need to be installed.  When new versions
+For updates, individual packages can be downloaded using `curl` or other tools
+and installed indvidually.
+
+## Install the AMP packages
+After the packages are downloaded, they need to be installed.  When new versions
 of a package is made available, it can be installed in the same way.
 
 To install all of the downloaded packages, one would run:
@@ -131,29 +57,35 @@ To install all of the downloaded packages, one would run:
 Each package's metadata will be displayed along with prompt to continue, such
 as:
 ```
-Package Data for ../packages/amp_python__1.0__x86_64.tar:
-  Name: amp_python
-  Version: 1.0
-  Build date: 20220906_124604
-  Architecture: x86_64
-  Dependencies: []
-  Installation path: /home/amp/amp_python
-Continue? 
+Package Data for ../packages/amp_ui__1.0.0__noarch.tar:
+  Name: amp_ui
+  Version: 1.0.0
+  Build date: 20230807_105728
+  Build revision: Branch: master, Commit: 69951e0
+  Architecture: noarch
+  Dependencies: ['tomcat']
+  Installation path: /srv/services/amp_sys-test-8120/tomcat/webapps
+Continue?
 ```
 Enter 'y' for each of the packages.
 
-NOTE: packages should be installed only when the system is stopped.
+NOTE: packages should be installed only when AMP is stopped.
 
-A record of the installations is kept in AMP_ROOT/packagedb.yaml.  This file
+A record of the installation is kept in `$AMP_ROOT/packagedb.yaml`.  This file
 is human-readable but is maintained by the software, so do not modify it.
 
-# Configure AMP
-Once the system requirements are installed, the AMP system needs to be
-configured.  All of the AMP configuration is done through the 
-AMP_ROOT/amp_bootstrap/amp.yaml file.  Configuration settings in this file will
-overlay any of the default settings that the system ships with.  Generally,
-these settings will not need to be modified after the system is initially
-configured.
+
+## Initial AMP Configuration
+All of the AMP configuration is done through the 
+`$AMP_ROOT/amp_bootstrap/amp.yaml` file.  Settings in this file will
+overlay any of the default settings that the system ships with.  
+
+Generally, settings will not need to be modified after the system is 
+initially configured.
+
+
+
+
 
 NOTE: The first time the system is configured, it will take a while since
 the galaxy system will load all of the prerequisites it needs to run at that
@@ -351,6 +283,63 @@ AMP can be started/stopped/restarted by running:
 
 This will perform the requested operation on all of the AMP components in 
 the order required.
+
+
+
+
+
+
+# Managing AMP
+After all of the system requirements have been installed (either manually or
+via ansible) and the amp_bootstrap repository has been cloned into the amp 
+user's home directory, the AMP system is ready for management.
+
+The amp_control.py tool provides the functionality needed to manage the AMP
+system, from downloading the AMP packages to starting/stopping the system.
+
+Information about the options for amp control can be obtained by using the
+`--help` argument on the tool:
+
+```
+$ ./amp_control --help
+usage: amp_control.py [-h] [--debug] [--config CONFIG] {init,download,start,stop,restart,configure,install} ...
+
+positional arguments:
+  {init,download,start,stop,restart,configure,install}
+                        Program action
+    init                Initialize the AMP installation
+    download            Download AMP packages
+    start               Start one or more services
+    stop                Stop one or more services
+    restart             Restart one or more services
+    configure           Configure AMP
+    install             Install a package
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --debug               Turn on debugging
+  --config CONFIG       Configuration file to use
+
+```
+
+
+For the remainder of this section of the documentation, assume:
+* AMP_ROOT is the location where the amp_bootstrap was cloned.  Usually this
+  is the amp user's home directory
+* The current directory is the amp_bootstrap.  You should be able to get
+  there by running `cd ~/amp_bootstrap`
+* Everything is done using the amp system user
+
+
+An overview of the AMP lifecycle:
+
+![An overview of the AMP lifecycle](./docs/resources/lifecycle.dot.png)
+
+
+
+
+
+
 
 
 # Developing AMP
