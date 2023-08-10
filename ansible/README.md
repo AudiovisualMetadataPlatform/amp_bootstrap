@@ -14,11 +14,11 @@ should work.
 
 You'll probably want at least these specs:
 * 8GB RAM
-* 2 CPU
+* 4 CPU
 * Disk:
-  * 80G disk for basic deployment or development
+  * 100G disk for basic deployment or development
   * Plus however large you expect your data to be
-  * For container development add at least 80G
+
   
 # Base operating system install
 
@@ -92,11 +92,14 @@ The command above will start the vm_bootstrap.sh script which will:
 
 At that point, the user should reboot the VM to fully apply all of the changes. 
 
+Congratulations!  The AMP server is now configured and the dependencies have been installed
 
+Use the instructions in the main README.md file to 
+install the AMP software itself
 
 # Using the VM
 
-When the VM starts, all of the needed OS services should be running, but AMP requires a manual start.
+When the VM starts all of the needed OS services should be running but AMP requires a manual start.
 
 Before starting AMP itself for the first time, verify the generated amp.yaml configuration file!
 
@@ -123,7 +126,6 @@ Suggested ports and local mappings:
 | 8082    | 8082      | Galaxy   | Only needed to interact with galaxy backend |
 | 22      | 8022      | SSH      | Useful for logging in and transferring files |
 | 5432    | 8032      | Postgres | Only needed to access postgres directly |
-
 
 
 ### Using the VM as development workstation
