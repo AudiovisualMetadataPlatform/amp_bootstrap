@@ -90,8 +90,8 @@ def load_amp_config(amp_root=None, user_config=None, user_defaults_only=False):
         port = config['amp']['port']
         if config['amp']['https']:
             scheme = 'https://'
-            if port != 443:
-                port = ':' + str(port)
+            #if port != 443:
+            #    port = ':' + str(port)
         else:
             if port != 80:
                 port = ':' + str(port)
