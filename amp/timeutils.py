@@ -10,7 +10,7 @@ def timestamp2hhmmss(timestamp):
     timestamp -= hours * 3600
     minutes = int(timestamp / 60)
     seconds = timestamp - minutes * 60
-    return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}"
+    return f"{hours:0d}:{minutes:02d}:{seconds:06.3f}"
 
 
 def hhmmss2timestamp(hhmmss):
