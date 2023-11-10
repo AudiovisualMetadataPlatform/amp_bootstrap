@@ -1,5 +1,7 @@
 from datetime import datetime
 import time
+# This is only used by the scoring tools and they really should be using
+# the functions in timeutils
 
 def convertToTime(timestamp, format):
     try:
