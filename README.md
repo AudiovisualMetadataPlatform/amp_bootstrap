@@ -39,9 +39,9 @@ update the software in a controlled fashion.
 
 The release packages can be downloaded using
 ```
-./amp_control.py download https://dlib.indiana.edu/AMP-packages/1.0.0 ../packages
+./amp_control.py download https://dlib.indiana.edu/AMP-packages/1.0.1 ../packages
 ```
-The version 1.0.0 release is roughly 10G, so it will take some time to download.
+The version 1.0.1 release is roughly 10G, so it will take some time to download.
 
 For updates, individual packages can be downloaded using `curl` or other tools
 and installed indvidually.
@@ -57,9 +57,9 @@ To install all of the downloaded packages, one would run:
 Each package's metadata will be displayed along with prompt to continue, such
 as:
 ```
-Package Data for ../packages/amp_ui__1.0.0__noarch.tar:
+Package Data for ../packages/amp_ui__1.0.1__noarch.tar:
   Name: amp_ui
-  Version: 1.0.0
+  Version: 1.0.1
   Build date: 20230807_105728
   Build revision: Branch: master, Commit: 69951e0
   Architecture: noarch
