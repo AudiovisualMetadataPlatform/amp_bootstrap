@@ -26,7 +26,7 @@ dev_repo_base = 'https://github.com/AudiovisualMetadataPlatform'
 # development prereqs
 devel_prereqs = {
     'javac': [[['javac', '-version'], r'javac (\d+)\.(\d+)', 'exact', (11, 0)]],
-    'node': [[['node', '--version'], r'v(\d+)', 'between', (12,), (14,)]],
+    'node': [[['node', '--version'], r'v(\d+)', 'exact', (22,)]],
     'wget': [[['wget', '--version'], r'Wget (\d+)\.(\d+)', 'any']],
     'make': [[['make', '--version'], r'Make (\d+)\.(\d+)', 'any']],
     'docker': [
