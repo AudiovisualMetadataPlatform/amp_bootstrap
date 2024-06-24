@@ -59,10 +59,10 @@
       name: ffmpeg
       state: present
 
-  - name: Setup Node 14 repository
-    shell: curl -sL https://rpm.nodesource.com/setup_14.x | bash -
+  - name: Setup Node 22 repository
+    shell: curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
 
-  - name: Install Node 14 package
+  - name: Install Node 22 package
     yum:
       name: nodejs
       state: present
