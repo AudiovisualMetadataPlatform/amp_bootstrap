@@ -46,11 +46,15 @@ def words2phrases(words: list, phrase_gap: float=1.5, max_duration: float=3) -> 
         speaker = word.get('speaker', None)
         if speaker != last_speaker:
             # we have to split on speaker, regardless of the length
-            phrases.append({'start': buffer[0]['start'],
-                            'end': buffer[-1]['end'],
-                            'phrase': buffer,
-                            'speaker': last_speaker})
-            buffer = [word]
+            if not buffer:
+                # first word in the buffer for this speaker
+                buffer.append(word)
+            else:
+                phrases.append({'start': buffer[0]['start'],
+                                'end': buffer[-1]['end'],
+                                'phrase': buffer,
+                                'speaker': last_speaker})
+                buffer = [word]
         else:
             if last_end == None or (word['start'] - last_end) < phrase_gap:
                 # append to the current phrase
