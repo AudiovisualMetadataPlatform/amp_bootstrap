@@ -69,10 +69,11 @@ def words2phrases(words: list, phrase_gap: float=1.5, max_duration: float=3) -> 
         last_end = word['end']
         last_speaker = speaker
     # catch any leftover words in the buffer
-    phrases.append({'start': buffer[0]['start'],
-                    'end': buffer[-1]['end'],
-                    'phrase': buffer,
-                    'speaker': last_speaker})
+    if buffer:
+        phrases.append({'start': buffer[0]['start'],
+                        'end': buffer[-1]['end'],
+                        'phrase': buffer,
+                        'speaker': last_speaker})
 
     # Now that we have a list of phrases, we need to rephrase them to be 
     # usable chunks
