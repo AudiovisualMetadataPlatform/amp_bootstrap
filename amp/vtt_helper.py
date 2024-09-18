@@ -1,5 +1,7 @@
 import time
 from .timeutils import timestamp2hhmmss
+from statistics import median
+import logging
 
 def gen_vtt(subtitles: list) -> str:
     """Generate VTT text based on the list subtitles given. 
@@ -22,6 +24,37 @@ def gen_vtt(subtitles: list) -> str:
     return result
 
 
+def alignwords(words: list) -> list:
+    """If there are words in the list which have a zero duration, provide a
+       reasonable start/end value so they can be timed correctly elsewhere."""
+    # find the median duration of the words.  We don't want to use the average
+    # since sometimes whisper will include non-verbal bits in the timing and
+    # skew it long, as in "AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH" for 29
+    # seconds.    
+    #med_duration = median([x['end'] - x['start'] for x in words if x['end'] - x['start'] > 0])
+    med_duration = 0.2
+    last_end = 0
+    for i, w in enumerate(words):
+        if w['end'] - w['start'] == 0:
+            # find the next word with a valid duration.
+            nduration = 0
+            for j, x in enumerate(words[i:]):
+                if x['end'] - x['start'] > 0.02:
+                    logging.debug(f"Found next real word for {i}, {w} at: {j + i}, {x}, {last_end}")
+                    nduration = (x['start'] - last_end) / j
+                    break
+            else:
+                logging.debug(f"Cannot find a next real word...so just use median duration {med_duration}")
+                nduration = med_duration
+
+            w['end'] = w['start'] + nduration
+            for j, x in enumerate(words[i + 1:]):
+                if x['start'] == w['start']:                    
+                    x['end'] = x['start'] = w['end']
+            logging.debug(f"New word: {w}")
+        last_end = w['end']
+
+
 def words2phrases(words: list, phrase_gap: float=1.5, max_duration: float=3) -> list:
     """Convert a list of words to readable phrases which can be used for subtitling
     Each word in words consists of:
@@ -42,7 +75,9 @@ def words2phrases(words: list, phrase_gap: float=1.5, max_duration: float=3) -> 
     buffer = []
     last_end = None
     last_speaker = None
-    for word in sorted(words, key=lambda x: x['start']):
+    #alignwords(words)
+    #for word in sorted(words, key=lambda x: x['start']):
+    for word in words:
         speaker = word.get('speaker', None)
         if speaker != last_speaker:
             # we have to split on speaker, regardless of the length
@@ -79,10 +114,12 @@ def words2phrases(words: list, phrase_gap: float=1.5, max_duration: float=3) -> 
     # usable chunks
     results = []
     for p in phrases:
+        logging.debug(p)
         results.extend([{'start': x['start'],
                          'end': x['end'],
                          'text': renderwords(x['phrase']),
                          'speaker': x['speaker']} for x in splitphrase(p, max_duration)])
+        logging.debug(results)
     return results
 
 
@@ -114,6 +151,7 @@ def splitphrase(phrase: dict, max_duration: float) -> list:
     results = []
     start = duration = 0
     buffer = []
+    #logging.debug(f"Phrase: {phrase['phrase']}")
     for word in phrase['phrase']:
         # add the next word to the buffer
         if not buffer:
@@ -124,6 +162,8 @@ def splitphrase(phrase: dict, max_duration: float) -> list:
             duration = word['end'] - start
             buffer.append(word)
         # check the duration...
+        if duration < 0.01:
+            logging.debug(f"Found zero duration word: {word}")
         if duration > max_duration:
             if buffer[-1]['word'][-1] in '.,?!':
                 # if the last word ends in punctuation, we'll let it
@@ -160,6 +200,10 @@ def splitphrase(phrase: dict, max_duration: float) -> list:
     
     return phrases
 
+
+#
+# Old implementation follows.  Needs to be removed at some point.
+#
 
 # Get the header of the vtt file
 def get_header():
