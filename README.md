@@ -39,9 +39,9 @@ update the software in a controlled fashion.
 
 The release packages can be downloaded using
 ```
-./amp_control.py download https://dlib.indiana.edu/AMP-packages/1.0.1 ../packages
+./amp_control.py download https://dlib.indiana.edu/AMP-packages/2.0.0 ../packages
 ```
-The version 1.0.1 release is roughly 10G, so it will take some time to download.
+The version 2.0.0 release is roughly 13G, so it will take some time to download.
 
 For updates, individual packages can be downloaded using `curl` or other tools
 and installed indvidually.
